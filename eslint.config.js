@@ -3,7 +3,16 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", "data/**", "tools/geodata/.cache/**"] },
+  {
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "data/**",
+      "tools/geodata/.cache/**",
+      "apps/desktop/src-tauri/target/**",
+      "apps/desktop/src-tauri/gen/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
