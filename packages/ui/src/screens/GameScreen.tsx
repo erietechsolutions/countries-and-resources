@@ -22,6 +22,7 @@ import { Tutorial } from "../components/Tutorial";
 import { GameUiContext, useAct, type GameUi } from "../game/GameContext";
 import { SPEEDS, useRunnerVersion, type GameRunner, type Speed } from "../game/runner";
 import { MapView, type FocusRequest } from "../map/MapView";
+import { BusinessPanel } from "../panels/BusinessPanel";
 import { HomePanel } from "../panels/HomePanel";
 import { LifePanel } from "../panels/LifePanel";
 import { MoneyPanel } from "../panels/MoneyPanel";
@@ -41,11 +42,12 @@ interface Props {
 }
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
-type Tab = "life" | "work" | "people" | "money" | "home" | "region";
+type Tab = "life" | "work" | "business" | "people" | "money" | "home" | "region";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "life", label: "Life" },
   { id: "work", label: "Work" },
+  { id: "business", label: "Business" },
   { id: "people", label: "People" },
   { id: "money", label: "Money" },
   { id: "home", label: "Home" },
@@ -305,6 +307,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "life" && <LifePanel />}
             {tab === "work" && <WorkPanel />}
             {tab === "people" && <PeoplePanel />}
+            {tab === "business" && <BusinessPanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
             {tab === "region" &&

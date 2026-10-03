@@ -1,3 +1,17 @@
+import {
+  closeBusiness,
+  foundBusiness,
+  investInBusiness,
+  openLocation,
+  raiseInvestment,
+  sellBusiness,
+  setPolicy,
+  setStaff,
+  upgradeLocation,
+  withdrawFromBusiness,
+  type PriceLevel,
+  type WageLevel,
+} from "../business/business";
 import type { CredentialId } from "../education/courses";
 import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
@@ -7,6 +21,7 @@ import { buyItem, dropCourse, enroll, sellItem } from "../life/shopping";
 import type { UnitType } from "../life/types";
 import { performSocialAction, type SocialAction } from "../social/social";
 import { acceptOffer, leaveJob } from "../work/jobs";
+import type { Sector } from "../work/occupations";
 import type { GameContext } from "./game";
 
 /**
@@ -18,6 +33,22 @@ export type Command =
   | { type: "debug.grantCash"; amountCents: number }
   | { type: "activity.start"; activityId: string; amount?: number; targetId?: string }
   | { type: "social.action"; personId: string; action: SocialAction }
+  | { type: "business.found"; name: string; sector: Sector; capitalCents: number }
+  | { type: "business.staff"; businessId: string; employees: number }
+  | {
+      type: "business.policy";
+      businessId: string;
+      wageLevel?: WageLevel;
+      priceLevel?: PriceLevel;
+      marketingCents?: number;
+    }
+  | { type: "business.invest"; businessId: string; amountCents: number }
+  | { type: "business.withdraw"; businessId: string; amountCents: number }
+  | { type: "business.openLocation"; businessId: string; cityId: number }
+  | { type: "business.upgrade"; businessId: string; locationIndex: number }
+  | { type: "business.raise"; businessId: string; sharePercent: number }
+  | { type: "business.sell"; businessId: string }
+  | { type: "business.close"; businessId: string }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -58,6 +89,17 @@ export const commandHandlers: CommandHandlers = {
   "activity.start": (ctx, cmd) =>
     alive(ctx) ?? startActivity(ctx, cmd.activityId, cmd.amount, cmd.targetId),
   "social.action": (ctx, cmd) => alive(ctx) ?? performSocialAction(ctx, cmd.personId, cmd.action),
+  "business.found": (ctx, cmd) =>
+    alive(ctx) ?? foundBusiness(ctx, cmd.name, cmd.sector, cmd.capitalCents),
+  "business.staff": (ctx, cmd) => setStaff(ctx, cmd.businessId, cmd.employees),
+  "business.policy": (ctx, cmd) => setPolicy(ctx, cmd.businessId, cmd),
+  "business.invest": (ctx, cmd) => investInBusiness(ctx, cmd.businessId, cmd.amountCents),
+  "business.withdraw": (ctx, cmd) => withdrawFromBusiness(ctx, cmd.businessId, cmd.amountCents),
+  "business.openLocation": (ctx, cmd) => openLocation(ctx, cmd.businessId, cmd.cityId),
+  "business.upgrade": (ctx, cmd) => upgradeLocation(ctx, cmd.businessId, cmd.locationIndex),
+  "business.raise": (ctx, cmd) => raiseInvestment(ctx, cmd.businessId, cmd.sharePercent),
+  "business.sell": (ctx, cmd) => sellBusiness(ctx, cmd.businessId),
+  "business.close": (ctx, cmd) => closeBusiness(ctx, cmd.businessId),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

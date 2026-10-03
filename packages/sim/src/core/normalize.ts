@@ -9,6 +9,8 @@ export function normalizeState(state: GameState): void {
   const s = state as Partial<GameState> & GameState;
   s.people ??= [];
   s.nextPersonId ??= 1;
+  s.businesses ??= [];
+  s.nextBusinessId ??= 1;
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };

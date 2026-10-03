@@ -3,6 +3,7 @@ import { financeSystem } from "../finance/finance";
 import { activitySystem } from "../life/activities";
 import { familySystem } from "../life/family";
 import { housingSystem } from "../life/housing";
+import { businessSystem } from "../business/business";
 import { socialSystem } from "../social/social";
 import { jobsSystem } from "../work/jobs";
 import { ageInYears, type DateParts, toDateParts } from "./calendar";
@@ -49,6 +50,7 @@ export const defaultSystems: readonly System[] = [
   housingSystem,
   familySystem,
   socialSystem,
+  businessSystem,
   economySystem,
   birthdaySystem,
   newYearSystem,

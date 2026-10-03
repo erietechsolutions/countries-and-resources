@@ -33,3 +33,4 @@ export * from "./worldgen/randomMap";
 export * from "./social/people";
 export * from "./social/social";
 export * from "./social/types";
+export * from "./business/business";

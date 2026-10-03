@@ -1515,3 +1515,41 @@ select.input {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ---------- Business ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0;
+}
+.form-grid .field:first-child {
+  grid-column: 1 / -1;
+}
+.small-input.wide {
+  width: auto;
+}
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 48px;
+  margin-top: 6px;
+}
+.spark i {
+  flex: 1;
+  border-radius: 2px;
+  min-width: 6px;
+}
+.spark i.pos {
+  background: var(--good);
+}
+.spark i.neg {
+  background: var(--bad);
+}
+.tabs {
+  flex-wrap: wrap;
+}
+.tabs button {
+  padding: 6px 9px;
+}

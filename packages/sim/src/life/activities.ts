@@ -1,3 +1,4 @@
+import { businessById } from "../business/business";
 import { newDailyFlags } from "../character/character";
 import { startOfDay, toDateParts } from "../core/calendar";
 import type { GameContext } from "../core/game";
@@ -66,6 +67,8 @@ export interface ActivityDef {
   effects?(ctx: GameContext): Partial<Needs>;
   /** Activities done with someone: why this relationship doesn't allow it, or null. */
   target?(ctx: GameContext, relationship: Relationship): string | null;
+  /** Activities aimed at one of the player's businesses (the target id is the business id). */
+  businessTarget?: boolean;
   onStart?(ctx: GameContext, amount?: number): void;
   onHour?(ctx: GameContext): void;
   onFinish?(ctx: GameContext, amount?: number, targetId?: string): void;
@@ -645,6 +648,24 @@ export const ACTIVITIES: ActivityDef[] = [
     },
   },
   {
+    id: "manageBusiness",
+    label: "Work on your business",
+    category: "work",
+    description:
+      "Put in hours yourself: it adds capacity, raises quality and keeps staff motivated.",
+    interruptible: true,
+    businessTarget: true,
+    hours: () => 4,
+    unavailable: during(6, 23),
+    effects: () => ({ energy: -1.5, happiness: -0.3 }),
+    onHour: (ctx) => {
+      const id = ctx.state.player.activity?.targetId;
+      const b = id ? businessById(ctx, id) : undefined;
+      if (b) b.ownerHours += 1;
+      addXp(ctx, { management: 0.6, sales: 0.2 });
+    },
+  },
+  {
     id: "study",
     label: "Study / attend classes",
     category: "growth",
@@ -812,6 +833,10 @@ export function activityBlocker(
 ): string | null {
   const p = ctx.state.player;
   if (def.system) return "This happens automatically.";
+  if (def.businessTarget) {
+    const b = targetId ? businessById(ctx, targetId) : undefined;
+    if (!b || b.status !== "active") return "Choose one of your businesses.";
+  }
   if (def.target) {
     const r = targetId ? relationshipWith(p, targetId) : undefined;
     if (!r) return "Choose someone to do this with.";
@@ -870,7 +895,7 @@ export function startActivity(
   const chosen = def.amount ? (amount ?? def.amount.default(ctx)) : undefined;
   const blocked = activityBlocker(ctx, def, chosen, targetId);
   if (blocked) return blocked;
-  begin(ctx, def, chosen, def.target ? targetId : undefined);
+  begin(ctx, def, chosen, def.target || def.businessTarget ? targetId : undefined);
   return null;
 }
 

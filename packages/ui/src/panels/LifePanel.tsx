@@ -136,7 +136,7 @@ export function LifePanel() {
   const p = game.state.player;
   const [showBlocked, setShowBlocked] = useState(true);
   // Activities done with a specific person live in the People tab.
-  const visible = ACTIVITIES.filter((a) => !a.system && !a.target);
+  const visible = ACTIVITIES.filter((a) => !a.system && !a.target && !a.businessTarget);
   return (
     <div className="panel-stack">
       <CurrentActivity />

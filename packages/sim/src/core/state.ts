@@ -1,5 +1,6 @@
 import type { Character } from "../character/character";
 import type { FamilyMember } from "../life/types";
+import type { Business } from "../business/business";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
 import type { WorldState } from "../world/types";
@@ -17,6 +18,9 @@ export interface GameState {
   /** Notable NPCs: friends, partners, coworkers, politicians, rivals. */
   people: Person[];
   nextPersonId: number;
+  /** Businesses founded by the player (including closed ones, for history). */
+  businesses: Business[];
+  nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];
 }

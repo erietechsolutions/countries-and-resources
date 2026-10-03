@@ -79,6 +79,8 @@ export function createNewGame(
     ),
     people: [],
     nextPersonId: 1,
+    businesses: [],
+    nextBusinessId: 1,
     log: [],
   };
 
