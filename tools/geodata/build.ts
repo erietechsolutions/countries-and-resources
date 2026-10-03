@@ -31,7 +31,8 @@ const cacheDir = path.join(here, ".cache");
 const outFile = path.join(root, "data/geography/real-world.json");
 
 const NE_BASE = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson";
-const ADMIN1 = "ne_10m_admin_1_states_provinces.geojson";
+// The "_lakes" variant cuts large lakes (e.g. the Great Lakes) out of province shapes.
+const ADMIN1 = "ne_10m_admin_1_states_provinces_lakes.geojson";
 const PLACES = "ne_10m_populated_places_simple.geojson";
 
 /** Width of the projected map in map units. */
