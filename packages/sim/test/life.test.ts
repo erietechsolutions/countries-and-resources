@@ -366,3 +366,14 @@ describe("save migration", () => {
     expect(startOfDay(loaded.time)).toBeGreaterThan(0);
   });
 });
+
+describe("warnings", () => {
+  it("warn once when a need falls into the danger zone", () => {
+    const game = newGame();
+    const alerts: string[] = [];
+    game.events.on("alert", (e) => alerts.push(e.message));
+    game.state.player.needs.food = 22;
+    game.tick(3);
+    expect(alerts.filter((a) => a.includes("starving"))).toHaveLength(1);
+  });
+});

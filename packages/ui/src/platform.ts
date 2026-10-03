@@ -1,8 +1,10 @@
 /** True when running inside the Tauri desktop app (M7) rather than a browser. */
 export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-export function quitApp(): void {
-  window.close();
+export async function quitApp(): Promise<void> {
+  if (!isDesktop) return;
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().close();
 }
 
 /** Offers a text file to the player as a download. */

@@ -4,7 +4,7 @@ A single-player (multiplayer planned) life simulation and nation-building game. 
 18-year-old with little or nothing and rise through work, business, politics or revolution,
 eventually founding and running your own country.
 
-Runs in the browser today; desktop builds for Linux and Windows (Tauri) arrive in M7.
+Runs in the browser, or as a desktop app for Linux and Windows (built with Tauri).
 
 ## Running the game
 
@@ -19,6 +19,31 @@ npm start          # production build, served at http://localhost:4173
 Opening `dist/web/index.html` directly from disk does not work, because browsers block loading
 the map data from `file://` pages. Use `npm start` (or any static file server) instead.
 
+## Desktop app (Linux and Windows)
+
+The desktop app wraps the same game in a native window using [Tauri](https://tauri.app).
+
+**One-time setup on Fedora** (Rust is already installed):
+
+```sh
+sudo dnf install webkit2gtk4.1-devel librsvg2-devel libappindicator-gtk3-devel dbus-devel
+```
+
+Run these from a regular terminal (e.g. Konsole), not VS Code's built-in terminal: the Flatpak
+version of VS Code runs inside a sandbox that can't see system libraries.
+
+```sh
+nvm use                 # Node 24
+npm run desktop:dev     # open the game in a desktop window with live reload
+npm run desktop:build   # build installers (.rpm, .deb, .AppImage) into
+                        # apps/desktop/src-tauri/target/release/bundle/
+```
+
+**Windows installers** have to be built on Windows. Either run `npm run desktop:build` on a
+Windows PC (with Rust and Node installed), or push the project to GitHub and let
+`.github/workflows/desktop.yml` build Linux and Windows installers automatically (run it from the
+Actions tab, or push a tag like `v0.2.0`).
+
 ## Development
 
 ```sh
@@ -26,6 +51,7 @@ npm test           # simulation + map data tests
 npm run typecheck  # TypeScript checks for all packages
 npm run lint
 npm run geodata    # rebuild data/geography/real-world.json from Natural Earth
+npm run balance    # bots play 180 days in 8 cities; prints a difficulty report
 ```
 
 ## Project layout
@@ -35,8 +61,10 @@ packages/sim/   Headless game engine: no UI or browser code (enforced by lint), 
                 on a multiplayer server later. Seeded RNG, calendar, commands, systems,
                 world generation, saves.
 packages/ui/    React + PixiJS client: menus, new-game wizard, world map, game screen.
+apps/desktop/   Tauri desktop wrapper (Rust shell, icons, installer config).
 data/           Static game content served to the client (map geography today).
 tools/geodata/  Pipeline that builds the real-world map from Natural Earth data.
+tools/sim/      Balance bot and difficulty report.
 docs/           Design decisions and the roadmap.
 ```
 

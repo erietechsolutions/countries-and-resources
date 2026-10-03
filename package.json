@@ -17,13 +17,16 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "geodata": "tsx tools/geodata/build.ts",
-    "balance": "tsx tools/sim/balance.ts"
+    "balance": "tsx tools/sim/balance.ts",
+    "desktop:dev": "cd apps/desktop && tauri dev",
+    "desktop:build": "cd apps/desktop && tauri build"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.12.1",
     "@types/d3-geo": "^3.1.1",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^26.6.4",

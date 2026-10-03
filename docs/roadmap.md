@@ -14,12 +14,24 @@ Each milestone ends with something playable.
       wealth and stability modes, country and city labels, province, country and city info,
       map-based location picker
 
-## Phase 2: First playable game
+## Phase 2: First playable game ✅
 
-- [ ] **M4 – Character and survival**: needs, parents' house and homeless starts, daily actions
-- [ ] **M5 – Jobs, skills and personal finance**: job market, gig work, skills, bills, rent, loans
-- [ ] **M6 – Economy foundation**: pops, goods, markets, NPC companies, inflation and recessions
-- [ ] **M7 – First release build**: Tauri desktop builds (Linux and Windows), tutorial, balance
+- [x] **M4 – Character and survival**: needs (food, energy, hygiene, health, happiness),
+      activities with opening hours and costs, collapse and hospital stays, parents with
+      personalities and patience, estranged family for homeless starts, shelters, soup kitchens,
+      food banks, street sleeping risks
+- [x] **M5 – Jobs, skills and personal finance**: 36 occupations in 12 sectors, NPC employers,
+      daily job search, offers, shifts and auto-work, missed shifts and firing, Friday paydays with
+      income tax, promotions, 8 skills, 12 courses and credentials, shop items, renting (deposits,
+      income and tenure checks, co-signers, eviction), payday and personal loans, medical debt,
+      collections, credit score
+- [x] **M6 – Economy foundation**: business cycles, growth, unemployment, inflation, goods prices
+      with supply shocks, wages and city prices that follow the economy, social classes driving
+      stability, companies that hire, lay off, go bankrupt and get founded, healthcare systems and
+      social services
+- [x] **M7 – First release build**: Tauri desktop app (Linux packages built locally once system
+      libraries are installed, Windows via GitHub Actions), app icon, first-game tutorial,
+      notifications and auto-pause, balance bot with automated difficulty tests
 
 ## Phase 3: Life and business
 

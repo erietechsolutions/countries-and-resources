@@ -52,7 +52,7 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
             Settings
           </button>
           {isDesktop && (
-            <button className="btn large" onClick={quitApp}>
+            <button className="btn large" onClick={() => void quitApp()}>
               Quit
             </button>
           )}

@@ -758,6 +758,24 @@ function forceActivity(ctx: GameContext, id: string): void {
   begin(ctx, def);
 }
 
+const LOW_NEED_WARNINGS: Partial<Record<keyof Needs, string>> = {
+  food: "You're starving. Eat something soon or your health will suffer.",
+  energy: "You're exhausted. Sleep soon or you'll collapse.",
+  hygiene: "You badly need a wash. Employers and landlords will notice.",
+  health: "Your health is failing. Rest, eat and keep clean.",
+};
+
+/** Warns once when a need first drops below the danger line, so the player can react in time. */
+function warnLowNeeds(ctx: GameContext, before: Needs): void {
+  const n = ctx.state.player.needs;
+  const busySleeping =
+    ctx.state.player.activity?.id === "sleep" || ctx.state.player.activity?.id === "hospital";
+  for (const [need, message] of Object.entries(LOW_NEED_WARNINGS) as [keyof Needs, string][]) {
+    if (need === "energy" && busySleeping) continue;
+    if (before[need] >= 20 && n[need] < 20) ctx.alert("bad", message);
+  }
+}
+
 /** Starts shifts automatically, and flags shifts the player didn't show up for. */
 function handleShifts(ctx: GameContext): void {
   const p = ctx.state.player;
@@ -799,7 +817,9 @@ export const activitySystem: System = {
     handleShifts(ctx);
 
     const def = p.activity ? activityById(p.activity.id) : undefined;
+    const before = { ...p.needs };
     applyHourlyNeeds(ctx, def?.decay ?? {}, def?.effects?.(ctx) ?? {});
+    warnLowNeeds(ctx, before);
     def?.onHour?.(ctx);
 
     const current = p.activity?.id;

@@ -65,3 +65,33 @@ positions with their relative sizes. Everything economic and political is genera
 - Every save carries a `version`. When `GameState` changes shape, bump `SAVE_VERSION` and add a
   migration in `save.ts`.
 - An autosave is written at the start of each in-game month (it can be turned off in Settings).
+
+## Life simulation (Phase 2)
+
+- **Needs** run 0–100. Food, energy and hygiene decay every hour (the current activity scales the
+  decay); health suffers when they bottom out; happiness drifts toward a target set by housing,
+  work, debt and unmet needs. Energy at 0 forces a collapse; health at 0 forces a 3-day hospital
+  stay, billed according to the country's healthcare system.
+- **Activities** (`life/activities.ts`) are the player's verbs. Each one is data: duration,
+  cost, opening hours, need effects, and start/hour/finish hooks. The UI lists them straight from
+  that table and shows why an action is unavailable. Work shifts start automatically
+  (interrupting things like sleep) unless the player turns that off.
+- **Prices** are derived from each city's living costs, rent and median wage, which the economy
+  updates monthly. Items and tuition cost a multiple of the local median hourly wage, so they feel
+  the same in rich and poor places.
+- **Jobs**: employers are generated per city when the player first lives there. A job search
+  (once a day) applies to 3 random openings the player qualifies for; hiring odds depend on
+  unemployment, hygiene, a phone, interview clothes, mood and being homeless. Many jobs need a
+  mailing address; staying at a shelter provides one for 14 days.
+- **Housing**: landlords want income of 2.5× rent and 30 days at a job, or parents willing to
+  co-sign. Two missed rent payments mean eviction.
+- **Economy** (`economy/economy.ts`) runs monthly for every country: business cycle phases,
+  growth, unemployment, inflation, goods prices with supply shocks, wage and price indexes, and
+  social classes whose satisfaction moves stability. Companies in cities the player has lived in
+  grow, shrink, lay off workers, go bankrupt, and get founded.
+
+## Balance
+
+`npm run balance` plays a rule-based bot through Hard Economic and Economic starts in 8 cities
+with 3 seeds and prints a table. `tools/sim/balance.test.ts` keeps the basics true in CI: a
+homeless start is survivable, work is findable but not instant, and starting at home is easier.

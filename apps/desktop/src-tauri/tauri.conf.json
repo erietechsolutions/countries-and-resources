@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Countries & Resources",
+  "version": "0.1.0",
+  "identifier": "com.countriesandresources.game",
+  "build": {
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../../.." },
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": { "script": "npm run build", "cwd": "../../.." },
+    "frontendDist": "../../../dist/web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Countries & Resources",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 680,
+        "center": true
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "msi"],
+    "category": "SimulationGame",
+    "shortDescription": "Life simulation and nation-building game",
+    "longDescription": "Start with nothing at 18 and build a life, a fortune, a movement and eventually a nation.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

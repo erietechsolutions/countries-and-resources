@@ -7,3 +7,7 @@ coverage/
 
 # Raw downloads for the geodata pipeline (the processed output in data/ is committed)
 tools/geodata/.cache/
+
+# Tauri build output
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
