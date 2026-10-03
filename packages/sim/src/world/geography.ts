@@ -43,6 +43,8 @@ export interface GeoProvince {
   /** Projected bounding box [minX, minY, maxX, maxY]. */
   bbox: [number, number, number, number];
   polygons: GeoPolygon[];
+  /** Height above sea level, 0–1 (generated maps only; used for mountains). */
+  elevation?: number;
 }
 
 export interface GeoCity {

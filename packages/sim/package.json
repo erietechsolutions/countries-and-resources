@@ -5,5 +5,11 @@
   "type": "module",
   "description": "Headless game simulation. Must never import UI or browser code.",
   "main": "src/index.ts",
-  "types": "src/index.ts"
+  "types": "src/index.ts",
+  "dependencies": {
+    "d3-delaunay": "^6.0.4"
+  },
+  "devDependencies": {
+    "@types/d3-delaunay": "^6.0.4"
+  }
 }

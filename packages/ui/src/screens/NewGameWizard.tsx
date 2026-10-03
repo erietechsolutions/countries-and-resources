@@ -7,6 +7,8 @@ import {
   formatDate,
   formatMoney,
   gameDateFromRealDate,
+  isRandomGeographyId,
+  REAL_WORLD_GEOGRAPHY_ID,
   MODE_ORDER,
   MODES,
   NAME_LIMIT,
@@ -91,18 +93,28 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
 
   const def = MODES[mode];
 
+  const geographyId = geographyIdFor(mapType, seed);
   useEffect(() => {
     let cancelled = false;
     setGeography(null);
-    loadGeography(geographyIdFor(mapType))
-      .then((g) => !cancelled && setGeography(g))
-      .catch(
-        (e: unknown) => !cancelled && setLoadError(e instanceof Error ? e.message : String(e)),
-      );
+    // City ids belong to a specific map, so a different map means picking a city again.
+    setCityId((id) => (geographyId === REAL_WORLD_GEOGRAPHY_ID ? id : null));
+    // Wait for typing to settle before generating a new planet.
+    const timer = window.setTimeout(
+      () => {
+        loadGeography(geographyId)
+          .then((g) => !cancelled && setGeography(g))
+          .catch(
+            (e: unknown) => !cancelled && setLoadError(e instanceof Error ? e.message : String(e)),
+          );
+      },
+      isRandomGeographyId(geographyId) ? 350 : 0,
+    );
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [mapType]);
+  }, [geographyId]);
 
   const chooseMode = (m: GameMode) => {
     const d = MODES[m];

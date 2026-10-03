@@ -29,3 +29,4 @@ export * from "./work/companies";
 export * from "./work/jobs";
 export * from "./work/occupations";
 export * from "./work/skills";
+export * from "./worldgen/randomMap";

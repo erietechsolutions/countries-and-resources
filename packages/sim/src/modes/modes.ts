@@ -70,8 +70,7 @@ const MAP_RANDOM: ChoiceOption<MapType> = {
   value: "random",
   label: "Random World",
   description: "A newly generated planet with its own continents, nations and names.",
-  available: false,
-  unavailableLabel: "Coming Soon",
+  available: true,
 };
 
 export const MODES: Record<GameMode, ModeDefinition> = {

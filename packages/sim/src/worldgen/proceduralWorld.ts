@@ -368,7 +368,9 @@ function generateBiomes(geography: WorldGeography, seed: number): Biome[] {
   const initial = geography.provinces.map((p) => {
     const rng = Rng.fromKey(seed, `biome:${p.id}`);
     const lat = Math.abs(p.lat) + rng.normal(0, 4);
-    if (rng.chance(0.12) && lat < 70) return "mountains" as Biome;
+    const mountainRoll = rng.chance(0.12);
+    const mountainous = p.elevation !== undefined ? p.elevation > 0.62 : mountainRoll;
+    if (mountainous && lat < 70) return "mountains" as Biome;
     if (lat > 72) return "polar";
     if (lat > 62) return "tundra";
     if (lat > 50)

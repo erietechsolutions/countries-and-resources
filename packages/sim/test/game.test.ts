@@ -56,10 +56,10 @@ describe("game modes", () => {
     expect(validateConfig({ ...valid, mapType: "random" }, geo)).not.toEqual([]);
   });
 
-  it("offers Random World in Economic mode but marks it Coming Soon for now", () => {
+  it("offers Random World in Economic mode only", () => {
     const random = MODES.economic.mapTypes.find((o) => o.value === "random");
-    expect(random?.available).toBe(false);
-    expect(validateConfig(economicConfig({ mapType: "random" }), geo)).not.toEqual([]);
+    expect(random?.available).toBe(true);
+    expect(validateConfig(economicConfig({ mapType: "random" }))).toEqual([]);
   });
 
   it("rejects uninhabitable or missing start cities", () => {
