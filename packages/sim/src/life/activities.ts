@@ -1,4 +1,5 @@
 import { businessById } from "../business/business";
+import { canWorkLegally } from "./moving";
 import { newDailyFlags } from "../character/character";
 import { startOfDay, toDateParts } from "../core/calendar";
 import type { GameContext } from "../core/game";
@@ -592,10 +593,16 @@ export const ACTIVITIES: ActivityDef[] = [
       "Apply to openings around the city. Cleanliness, a phone and a mailing address all improve your chances.",
     interruptible: true,
     hours: () => 3,
-    unavailable: all(during(8, 18), (ctx) =>
-      ctx.state.player.daily.jobSearch
-        ? "You've already applied everywhere you could today."
-        : null,
+    unavailable: all(
+      during(8, 18),
+      (ctx) =>
+        ctx.state.player.daily.jobSearch
+          ? "You've already applied everywhere you could today."
+          : null,
+      (ctx) =>
+        canWorkLegally(ctx)
+          ? null
+          : "Without the right to work here, only informal work is open to you (day labor, gigs).",
     ),
     effects: () => ({ happiness: -1 }),
     onStart: (ctx) => {
@@ -774,6 +781,18 @@ export const ACTIVITIES: ActivityDef[] = [
     },
   },
 
+  // ---- Started by the game
+  {
+    id: "traveling",
+    label: "Traveling",
+    category: "rest",
+    description: "On the way to your new home.",
+    system: true,
+    interruptible: false,
+    hours: () => 12,
+    decay: { food: 0.8, energy: 0.8, hygiene: 1.2 },
+    effects: () => ({ happiness: -0.3 }),
+  },
   // ---- Emergencies (started by the game)
   {
     id: "collapse",

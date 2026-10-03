@@ -85,6 +85,14 @@ function migrateV1toV2(input: unknown): unknown {
     relationships: [],
     reputation: emptyReputation(),
     pregnancy: null,
+    residency: {
+      countryId: old.citizenship[0],
+      status: "citizen",
+      since: state.time,
+      expiresAt: null,
+    },
+    visas: [],
+    visaApplication: null,
   };
   state.player = player;
   state.family = generateFamily(

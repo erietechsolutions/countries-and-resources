@@ -20,6 +20,7 @@ import {
   type Relationship,
   type Reputation,
 } from "../social/types";
+import type { Residency, VisaApplication, VisaGrant } from "../life/moving";
 import { emptySkills, type SkillXp } from "../work/skills";
 
 export type Gender = "male" | "female" | "nonbinary";
@@ -74,6 +75,11 @@ export interface Character {
   relationships: Relationship[];
   reputation: Reputation;
   pregnancy: Pregnancy | null;
+  /** Legal status in the country the player lives in. */
+  residency: Residency;
+  /** Approved visas not yet used to move. */
+  visas: VisaGrant[];
+  visaApplication: VisaApplication | null;
 }
 
 export const NAME_LIMIT = 30;
@@ -140,6 +146,14 @@ export function createPlayerCharacter(
     relationships: [],
     reputation: emptyReputation(),
     pregnancy: null,
+    residency: {
+      countryId: options.countryId,
+      status: "citizen",
+      since: options.startTime,
+      expiresAt: null,
+    },
+    visas: [],
+    visaApplication: null,
   };
 }
 

@@ -17,6 +17,7 @@ import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
 import { moveBackHome, rentUnit } from "../life/housing";
 import type { ItemId } from "../life/items";
+import { applyForVisa, moveTo, naturalize, type VisaType } from "../life/moving";
 import { buyItem, dropCourse, enroll, sellItem } from "../life/shopping";
 import type { UnitType } from "../life/types";
 import { performSocialAction, type SocialAction } from "../social/social";
@@ -49,6 +50,9 @@ export type Command =
   | { type: "business.raise"; businessId: string; sharePercent: number }
   | { type: "business.sell"; businessId: string }
   | { type: "business.close"; businessId: string }
+  | { type: "move.to"; cityId: number; illegal?: boolean }
+  | { type: "immigration.apply"; countryId: string; visa: VisaType }
+  | { type: "immigration.naturalize" }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -100,6 +104,9 @@ export const commandHandlers: CommandHandlers = {
   "business.raise": (ctx, cmd) => raiseInvestment(ctx, cmd.businessId, cmd.sharePercent),
   "business.sell": (ctx, cmd) => sellBusiness(ctx, cmd.businessId),
   "business.close": (ctx, cmd) => closeBusiness(ctx, cmd.businessId),
+  "move.to": (ctx, cmd) => alive(ctx) ?? moveTo(ctx, cmd.cityId, cmd.illegal ?? false),
+  "immigration.apply": (ctx, cmd) => alive(ctx) ?? applyForVisa(ctx, cmd.countryId, cmd.visa),
+  "immigration.naturalize": (ctx) => alive(ctx) ?? naturalize(ctx),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

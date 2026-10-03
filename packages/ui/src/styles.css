@@ -1553,3 +1553,11 @@ select.input {
 .tabs button {
   padding: 6px 9px;
 }
+.city-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.city-search .input {
+  width: 100%;
+}

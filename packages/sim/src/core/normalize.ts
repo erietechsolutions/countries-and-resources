@@ -15,4 +15,12 @@ export function normalizeState(state: GameState): void {
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };
   p.pregnancy ??= null;
+  p.residency ??= {
+    countryId: p.citizenship[0]!,
+    status: "citizen",
+    since: s.time,
+    expiresAt: null,
+  };
+  p.visas ??= [];
+  p.visaApplication ??= null;
 }

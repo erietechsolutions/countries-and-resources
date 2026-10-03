@@ -142,6 +142,8 @@ export interface CountryState {
   healthcare: Healthcare;
   /** 0–1: shelters, food banks and welfare available to people in need. */
   socialServices: number;
+  /** 0–1: how welcoming immigration policy is (derived from the country when not set). */
+  immigrationOpenness?: number;
 }
 
 export type Biome =

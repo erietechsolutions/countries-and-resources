@@ -10,6 +10,7 @@ import {
   unitType,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
+import { ResidencyCard } from "./MovePanel";
 import { useGameUi } from "../game/GameContext";
 
 export function HomePanel() {
@@ -22,6 +23,7 @@ export function HomePanel() {
 
   return (
     <div className="panel-stack">
+      <ResidencyCard />
       <section className="card">
         <h4 className="no-margin">Where you live</h4>
         {h.kind === "parents" && (

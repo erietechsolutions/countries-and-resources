@@ -34,3 +34,4 @@ export * from "./social/people";
 export * from "./social/social";
 export * from "./social/types";
 export * from "./business/business";
+export * from "./life/moving";

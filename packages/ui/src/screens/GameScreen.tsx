@@ -16,6 +16,7 @@ import {
   type ProvinceId,
 } from "@cr/sim";
 import { Avatar } from "../components/Avatar";
+import { CitySearch } from "../components/CitySearch";
 import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards";
 import { Toasts, type Toast } from "../components/Toasts";
 import { Tutorial } from "../components/Tutorial";
@@ -26,6 +27,7 @@ import { BusinessPanel } from "../panels/BusinessPanel";
 import { HomePanel } from "../panels/HomePanel";
 import { LifePanel } from "../panels/LifePanel";
 import { MoneyPanel } from "../panels/MoneyPanel";
+import { MovePanel } from "../panels/MovePanel";
 import { PeoplePanel } from "../panels/PeoplePanel";
 import { WorkPanel } from "../panels/WorkPanel";
 import { useSettings } from "../storage/settings";
@@ -310,6 +312,17 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "business" && <BusinessPanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
+            {tab === "region" && (
+              <CitySearch
+                geography={geography}
+                onSelect={(id) => {
+                  const c = geography.cities[id]!;
+                  setCityId(id);
+                  setProvinceId(c.provinceId);
+                  setFocus({ x: c.x, y: c.y, zoom: 8, key: Date.now() });
+                }}
+              />
+            )}
             {tab === "region" &&
               (provinceId === null ? (
                 <div className="panel-stack">
@@ -331,6 +344,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
                       <CitySummary geo={geography} world={state.world} cityId={cityId} />
                     </section>
                   )}
+                  {cityId !== null && <MovePanel cityId={cityId} />}
                   <ProvinceCard
                     geo={geography}
                     world={state.world}

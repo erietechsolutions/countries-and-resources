@@ -4,6 +4,7 @@ import { cityCosts, UNIT_TYPES, unitType } from "../economy/costs";
 import { monthlyIncomeCents, transact } from "../finance/finance";
 import { formatMoney } from "../world/format";
 import { averageRelationship, MOVE_BACK_RELATIONSHIP } from "./family";
+import { hasDocuments } from "./moving";
 import type { UnitType } from "./types";
 
 /** Landlords want a monthly income of at least this many times the rent. */
@@ -42,6 +43,7 @@ export function rentalListings(ctx: GameContext): Listing[] {
     const incomeOk = income >= rent * INCOME_TO_RENT && tenureOk;
     let reason: string | undefined;
     if (p.housing.kind === "renting" && p.housing.unit === u.id) reason = "You already live here.";
+    else if (!hasDocuments(ctx)) reason = "Landlords require legal residency papers.";
     else if (evicted) reason = "Landlords won't rent to you so soon after an eviction.";
     else if (!incomeOk && !cosign) {
       reason =
@@ -95,6 +97,8 @@ export function rentUnit(ctx: GameContext, unit: UnitType): string | null {
 export function moveBackHome(ctx: GameContext): string | null {
   const p = ctx.state.player;
   if (p.housing.kind === "parents") return "You already live with your parents.";
+  if (ctx.state.family[0] && ctx.state.family[0].cityId !== p.cityId)
+    return "Your parents live in another city.";
   if (ctx.state.family.length === 0) return "You have no family to move in with.";
   if (averageRelationship(ctx.state.family) < MOVE_BACK_RELATIONSHIP) {
     return `Your parents won't take you back yet (relationship ${MOVE_BACK_RELATIONSHIP}+ needed).`;
