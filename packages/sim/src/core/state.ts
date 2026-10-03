@@ -1,0 +1,18 @@
+import type { Character } from "../character/character";
+import type { GameConfig } from "../modes/modes";
+import type { WorldState } from "../world/types";
+import type { GameTime } from "./calendar";
+import type { LogEntry } from "./events";
+
+/** The complete, serializable state of one game. Everything in here goes into a save file. */
+export interface GameState {
+  config: GameConfig;
+  time: GameTime;
+  rngState: number;
+  world: WorldState;
+  player: Character;
+  /** Most recent messages, newest last. */
+  log: LogEntry[];
+}
+
+export const MAX_LOG_ENTRIES = 200;

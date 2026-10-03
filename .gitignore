@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vite/
+
+# Raw downloads for the geodata pipeline (the processed output in data/ is committed)
+tools/geodata/.cache/

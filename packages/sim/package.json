@@ -1,0 +1,9 @@
+{
+  "name": "@cr/sim",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Headless game simulation. Must never import UI or browser code.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
