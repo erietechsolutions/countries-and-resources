@@ -241,7 +241,11 @@ function assignPoliticalColors(
     hueIndex.set(c.id, index);
     colors.set(
       c.id,
-      hslToHex(POLITICAL_HUES[index]! + rng.float(-6, 6), rng.float(0.32, 0.48), rng.float(0.5, 0.62)),
+      hslToHex(
+        POLITICAL_HUES[index]! + rng.float(-6, 6),
+        rng.float(0.32, 0.48),
+        rng.float(0.5, 0.62),
+      ),
     );
   }
   return colors;
@@ -265,17 +269,78 @@ const HABITABILITY: Record<Biome, number> = {
 };
 
 const BIOME_RESOURCES: Record<Biome, [Resource, number][]> = {
-  polar: [["oil", 2], ["gas", 2], ["rareEarths", 1]],
-  tundra: [["oil", 3], ["gas", 3], ["iron", 1], ["gold", 1], ["uranium", 1]],
-  boreal: [["timber", 5], ["iron", 2], ["oil", 1], ["coal", 1], ["gold", 1]],
-  mountains: [["copper", 3], ["gold", 2], ["iron", 2], ["coal", 2], ["uranium", 1], ["rareEarths", 1], ["livestock", 1]],
-  desert: [["oil", 5], ["gas", 3], ["copper", 1], ["uranium", 1], ["rareEarths", 1]],
-  steppe: [["livestock", 4], ["farmland", 2], ["coal", 2], ["oil", 1], ["uranium", 1]],
-  savanna: [["livestock", 4], ["farmland", 3], ["gold", 1], ["copper", 1]],
-  tropical: [["timber", 4], ["farmland", 3], ["oil", 1], ["rareEarths", 1]],
-  grassland: [["farmland", 6], ["livestock", 3], ["coal", 1], ["oil", 1]],
-  temperate: [["farmland", 5], ["timber", 3], ["coal", 2], ["iron", 2], ["gas", 1]],
-  mediterranean: [["farmland", 5], ["livestock", 2], ["copper", 1]],
+  polar: [
+    ["oil", 2],
+    ["gas", 2],
+    ["rareEarths", 1],
+  ],
+  tundra: [
+    ["oil", 3],
+    ["gas", 3],
+    ["iron", 1],
+    ["gold", 1],
+    ["uranium", 1],
+  ],
+  boreal: [
+    ["timber", 5],
+    ["iron", 2],
+    ["oil", 1],
+    ["coal", 1],
+    ["gold", 1],
+  ],
+  mountains: [
+    ["copper", 3],
+    ["gold", 2],
+    ["iron", 2],
+    ["coal", 2],
+    ["uranium", 1],
+    ["rareEarths", 1],
+    ["livestock", 1],
+  ],
+  desert: [
+    ["oil", 5],
+    ["gas", 3],
+    ["copper", 1],
+    ["uranium", 1],
+    ["rareEarths", 1],
+  ],
+  steppe: [
+    ["livestock", 4],
+    ["farmland", 2],
+    ["coal", 2],
+    ["oil", 1],
+    ["uranium", 1],
+  ],
+  savanna: [
+    ["livestock", 4],
+    ["farmland", 3],
+    ["gold", 1],
+    ["copper", 1],
+  ],
+  tropical: [
+    ["timber", 4],
+    ["farmland", 3],
+    ["oil", 1],
+    ["rareEarths", 1],
+  ],
+  grassland: [
+    ["farmland", 6],
+    ["livestock", 3],
+    ["coal", 1],
+    ["oil", 1],
+  ],
+  temperate: [
+    ["farmland", 5],
+    ["timber", 3],
+    ["coal", 2],
+    ["iron", 2],
+    ["gas", 1],
+  ],
+  mediterranean: [
+    ["farmland", 5],
+    ["livestock", 2],
+    ["copper", 1],
+  ],
 };
 
 /** Climate from latitude plus noise, then smoothed so neighboring provinces form regions. */
@@ -286,18 +351,34 @@ function generateBiomes(geography: WorldGeography, seed: number): Biome[] {
     if (rng.chance(0.12) && lat < 70) return "mountains" as Biome;
     if (lat > 72) return "polar";
     if (lat > 62) return "tundra";
-    if (lat > 50) return rng.weighted<Biome>([["boreal", 6], ["temperate", 3], ["grassland", 1]]);
+    if (lat > 50)
+      return rng.weighted<Biome>([
+        ["boreal", 6],
+        ["temperate", 3],
+        ["grassland", 1],
+      ]);
     if (lat > 35) {
       return rng.weighted<Biome>([
-        ["temperate", 5], ["grassland", 3], ["mediterranean", 2], ["steppe", 2],
+        ["temperate", 5],
+        ["grassland", 3],
+        ["mediterranean", 2],
+        ["steppe", 2],
       ]);
     }
     if (lat > 15) {
       return rng.weighted<Biome>([
-        ["desert", 4], ["steppe", 3], ["savanna", 2], ["mediterranean", 1], ["grassland", 1],
+        ["desert", 4],
+        ["steppe", 3],
+        ["savanna", 2],
+        ["mediterranean", 1],
+        ["grassland", 1],
       ]);
     }
-    return rng.weighted<Biome>([["tropical", 5], ["savanna", 4], ["grassland", 1]]);
+    return rng.weighted<Biome>([
+      ["tropical", 5],
+      ["savanna", 4],
+      ["grassland", 1],
+    ]);
   });
 
   return geography.provinces.map((p) => {
@@ -324,7 +405,12 @@ function generateBiomes(geography: WorldGeography, seed: number): Biome[] {
 function generateResources(p: GeoProvince, biome: Biome, rng: Rng): Resource[] {
   const pool = [...BIOME_RESOURCES[biome]];
   if (p.coastal) pool.push(["fish", 4], ["oil", 1]);
-  const count = rng.weighted([[0, 1], [1, 4], [2, 4], [3, 2]] as const);
+  const count = rng.weighted([
+    [0, 1],
+    [1, 4],
+    [2, 4],
+    [3, 2],
+  ] as const);
   const chosen: Resource[] = [];
   for (let i = 0; i < count && pool.length > 0; i++) {
     const r = rng.weighted(pool);
@@ -395,18 +481,25 @@ function generateCity(
   const urbanPopulation = province.population * province.urbanization * 0.65;
   let population = Math.max(300, Math.round(urbanPopulation * share * rng.float(0.85, 1.15)));
   // Soft cap so no city grows far beyond the largest real-world metro areas.
-  if (population > 20_000_000) population = Math.round(20_000_000 + (population - 20_000_000) * 0.3);
+  if (population > 20_000_000)
+    population = Math.round(20_000_000 + (population - 20_000_000) * 0.3);
 
   // 0 for a town of 10k, 1 for a metropolis of 10M.
   const size = clamp((Math.log10(population) - 4) / 3, 0, 1);
-  const medianWageCents = Math.round(country.medianWageCents * (0.8 + 0.45 * size) * rng.float(0.92, 1.08));
-  const costOfLivingIndex = Math.round(country.costOfLivingIndex * (0.75 + 0.6 * size) * rng.float(0.9, 1.1));
+  const medianWageCents = Math.round(
+    country.medianWageCents * (0.8 + 0.45 * size) * rng.float(0.92, 1.08),
+  );
+  const costOfLivingIndex = Math.round(
+    country.costOfLivingIndex * (0.75 + 0.6 * size) * rng.float(0.9, 1.1),
+  );
   const monthlyMedianIncome = medianWageCents * 160;
   return {
     id: cityId,
     population,
     medianWageCents,
-    rentCents: Math.round((monthlyMedianIncome * 0.3 * (0.75 + 0.6 * size) * rng.float(0.85, 1.15)) / 100) * 100,
+    rentCents:
+      Math.round((monthlyMedianIncome * 0.3 * (0.75 + 0.6 * size) * rng.float(0.85, 1.15)) / 100) *
+      100,
     livingCostCents: Math.round((monthlyMedianIncome * 0.3 * rng.float(0.9, 1.1)) / 100) * 100,
     costOfLivingIndex,
   };

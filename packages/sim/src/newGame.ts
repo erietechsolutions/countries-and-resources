@@ -1,15 +1,14 @@
 import {
   createPlayerCharacter,
-  fullName,
   validateCharacterInput,
   type CharacterInput,
 } from "./character/character";
-import { formatDate } from "./core/calendar";
 import { Game } from "./core/game";
 import { Rng } from "./core/rng";
 import type { GameState } from "./core/state";
 import { MODES, validateConfig, type GameConfig } from "./modes/modes";
 import type { WorldGeography } from "./world/geography";
+import { formatMoney } from "./world/format";
 import type { WorldState } from "./world/types";
 import { generateWorld } from "./worldgen/proceduralWorld";
 
@@ -44,7 +43,10 @@ export function createNewGame(
   world?: WorldState,
 ): Game {
   const { config } = setup;
-  const problems = [...validateConfig(config, geography), ...validateCharacterInput(setup.character)];
+  const problems = [
+    ...validateConfig(config, geography),
+    ...validateCharacterInput(setup.character),
+  ];
   if (problems.length > 0) throw new NewGameError(problems);
 
   const rng = Rng.fromKey(config.worldSeed, "player");
@@ -74,11 +76,12 @@ export function createNewGame(
   const game = new Game(state, geography);
   const country = geography.countries.find((c) => c.id === city.countryId)!;
   const where = `${city.name}, ${country.name}`;
+  const cash = formatMoney(player.cashCents, true);
   game.log(
     "life",
     player.housing === "homeless"
-      ? `${fullName(player)} wakes up on the streets of ${where} on ${formatDate(state.time)}.`
-      : `${fullName(player)} wakes up in their parents' basement in ${where} on ${formatDate(state.time)}.`,
+      ? `You wake up on the streets of ${where}. You are 18, with ${cash} to your name.`
+      : `You wake up in your parents' basement in ${where}. You are 18, with ${cash} to your name.`,
   );
   return game;
 }

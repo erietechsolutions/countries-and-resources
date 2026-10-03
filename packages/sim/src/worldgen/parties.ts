@@ -5,8 +5,10 @@ import { hslToHex } from "./color";
 const SUFFIXES = ["Party", "Union", "Alliance", "Front", "Movement", "League", "Congress"];
 
 function core(ideology: Ideology, rng: Rng): string {
-  if (ideology.economic < -0.4) return rng.pick(["Labour", "Socialist", "Workers'", "Social Democratic"]);
-  if (ideology.economic > 0.4) return rng.pick(["Free Enterprise", "Liberal", "Market", "Prosperity"]);
+  if (ideology.economic < -0.4)
+    return rng.pick(["Labour", "Socialist", "Workers'", "Social Democratic"]);
+  if (ideology.economic > 0.4)
+    return rng.pick(["Free Enterprise", "Liberal", "Market", "Prosperity"]);
   return rng.pick(["Centre", "Democratic", "Civic", "People's"]);
 }
 

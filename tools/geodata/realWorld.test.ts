@@ -2,9 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createNewGame, generateWorld, validateConfig, type WorldGeography } from "../../packages/sim/src";
+import {
+  createNewGame,
+  generateWorld,
+  validateConfig,
+  type WorldGeography,
+} from "../../packages/sim/src";
 
-const file = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/geography/real-world.json");
+const file = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../data/geography/real-world.json",
+);
 const geo = JSON.parse(fs.readFileSync(file, "utf8")) as WorldGeography;
 
 describe("real-world geography", () => {
@@ -54,7 +62,13 @@ describe("real-world geography", () => {
           firstName: "Jo",
           lastName: "Doe",
           gender: "female",
-          appearance: { skinTone: "Light", hairColor: "Brown", hairStyle: "Long", eyeColor: "Blue", build: "Slim" },
+          appearance: {
+            skinTone: "Light",
+            hairColor: "Brown",
+            hairStyle: "Long",
+            eyeColor: "Blue",
+            build: "Slim",
+          },
         },
       },
       geo,

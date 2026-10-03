@@ -40,8 +40,25 @@ const MAP_WIDTH = 4000;
 const SIMPLIFY = "4%";
 /** Territories where nobody can start or live. */
 const UNINHABITABLE = new Set([
-  "ATA", "ATF", "HMD", "SGS", "BVT", "IOT", "CLP", "IOA", "ATC", // remote or polar
-  "USG", "KAS", "ESB", "WSB", "CSI", "PGA", "UMI", "BJN", "SER", "SCR", // bases and outposts
+  "ATA",
+  "ATF",
+  "HMD",
+  "SGS",
+  "BVT",
+  "IOT",
+  "CLP",
+  "IOA",
+  "ATC", // remote or polar
+  "USG",
+  "KAS",
+  "ESB",
+  "WSB",
+  "CSI",
+  "PGA",
+  "UMI",
+  "BJN",
+  "SER",
+  "SCR", // bases and outposts
 ]);
 const EXCLUDED_PLACE_CLASSES = new Set([
   "Scientific station",
@@ -87,10 +104,18 @@ function simplifyToTopology(input: string): Topology {
   execFileSync(
     bin,
     [
-      "-i", input,
-      "-filter-fields", "name,adm0_a3,admin,latitude,longitude",
-      "-simplify", SIMPLIFY, "keep-shapes",
-      "-o", out, "format=topojson", "quantization=200000", "force",
+      "-i",
+      input,
+      "-filter-fields",
+      "name,adm0_a3,admin,latitude,longitude",
+      "-simplify",
+      SIMPLIFY,
+      "keep-shapes",
+      "-o",
+      out,
+      "format=topojson",
+      "quantization=200000",
+      "force",
     ],
     { stdio: "inherit" },
   );
@@ -136,7 +161,10 @@ function ringArea(r: FlatRing): number {
 function pointInRing(x: number, y: number, r: FlatRing): boolean {
   let inside = false;
   for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
-    const xi = r[i]!, yi = r[i + 1]!, xj = r[j]!, yj = r[j + 1]!;
+    const xi = r[i]!,
+      yi = r[i + 1]!,
+      xj = r[j]!,
+      yj = r[j + 1]!;
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
@@ -179,12 +207,17 @@ function inPolygons(x: number, y: number, polygons: GeoPolygon[]): boolean {
 }
 
 function bboxOf(polygons: GeoPolygon[]): [number, number, number, number] {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  let x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity;
   for (const poly of polygons) {
     const r = poly[0]!;
     for (let i = 0; i < r.length; i += 2) {
-      x0 = Math.min(x0, r[i]!); x1 = Math.max(x1, r[i]!);
-      y0 = Math.min(y0, r[i + 1]!); y1 = Math.max(y1, r[i + 1]!);
+      x0 = Math.min(x0, r[i]!);
+      x1 = Math.max(x1, r[i]!);
+      y0 = Math.min(y0, r[i + 1]!);
+      y1 = Math.max(y1, r[i + 1]!);
     }
   }
   return [x0, y0, x1, y1];
@@ -324,7 +357,10 @@ async function main() {
     const [x, y] = pt;
     let province = provinces.find(
       (p) =>
-        x >= p.bbox[0] && x <= p.bbox[2] && y >= p.bbox[1] && y <= p.bbox[3] &&
+        x >= p.bbox[0] &&
+        x <= p.bbox[2] &&
+        y >= p.bbox[1] &&
+        y <= p.bbox[3] &&
         inPolygons(x, y, p.polygons),
     );
     province ??= nearest(x, y, byCountry.get(pr.adm0_a3) ?? provinces);

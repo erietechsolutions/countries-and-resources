@@ -10,6 +10,7 @@
     "dev": "npm run dev -w @cr/ui",
     "build": "npm run build -w @cr/ui",
     "preview": "npm run preview -w @cr/ui",
+    "start": "npm run build && npm run preview -w @cr/ui",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p packages/sim --noEmit && tsc -p packages/ui --noEmit && tsc -p tools --noEmit",

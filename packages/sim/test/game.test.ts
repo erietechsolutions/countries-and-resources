@@ -30,7 +30,10 @@ describe("game modes", () => {
     for (const cash of [0, 200_000]) {
       for (const housing of ["parents", "homeless"] as const) {
         expect(
-          validateConfig(economicConfig({ startingCashCents: cash, startingHousing: housing }), geo),
+          validateConfig(
+            economicConfig({ startingCashCents: cash, startingHousing: housing }),
+            geo,
+          ),
         ).toEqual([]);
       }
     }
@@ -42,7 +45,11 @@ describe("game modes", () => {
     expect(hard.startingHousing.map((o) => o.value)).toEqual(["homeless"]);
     expect(hard.mapTypes.map((o) => o.value)).toEqual(["real"]);
 
-    const valid = economicConfig({ mode: "hardEconomic", startingCashCents: 0, startingHousing: "homeless" });
+    const valid = economicConfig({
+      mode: "hardEconomic",
+      startingCashCents: 0,
+      startingHousing: "homeless",
+    });
     expect(validateConfig(valid, geo)).toEqual([]);
     expect(validateConfig({ ...valid, startingCashCents: 200_000 }, geo)).not.toEqual([]);
     expect(validateConfig({ ...valid, startingHousing: "parents" }, geo)).not.toEqual([]);
@@ -89,7 +96,10 @@ describe("world generation", () => {
 describe("new game", () => {
   it("creates an 18-year-old with the chosen cash and housing", () => {
     const game = createNewGame(
-      { config: economicConfig({ startingCashCents: 0, startingHousing: "homeless" }), character: testCharacter },
+      {
+        config: economicConfig({ startingCashCents: 0, startingHousing: "homeless" }),
+        character: testCharacter,
+      },
       geo,
     );
     const p = game.state.player;
@@ -104,7 +114,10 @@ describe("new game", () => {
   it("refuses invalid setups with readable problems", () => {
     expect(() =>
       createNewGame(
-        { config: economicConfig({ mode: "hardEconomic" }), character: { ...testCharacter, firstName: " " } },
+        {
+          config: economicConfig({ mode: "hardEconomic" }),
+          character: { ...testCharacter, firstName: " " },
+        },
         geo,
       ),
     ).toThrow(NewGameError);
@@ -114,7 +127,10 @@ describe("new game", () => {
 describe("game loop", () => {
   it("emits day, month and year boundaries", () => {
     const game = createNewGame(
-      { config: economicConfig({ startTime: Date.UTC(2026, 11, 31) / 3_600_000 }), character: testCharacter },
+      {
+        config: economicConfig({ startTime: Date.UTC(2026, 11, 31) / 3_600_000 }),
+        character: testCharacter,
+      },
       geo,
     );
     const seen: string[] = [];
@@ -156,7 +172,9 @@ describe("saves", () => {
     expect(() => parseSave("not json")).toThrow(SaveError);
     expect(() => parseSave(JSON.stringify({ format: "other" }))).toThrow(SaveError);
     expect(() =>
-      parseSave(JSON.stringify({ format: "countries-and-resources-save", version: 999, state: {} })),
+      parseSave(
+        JSON.stringify({ format: "countries-and-resources-save", version: 999, state: {} }),
+      ),
     ).toThrow(/newer version/);
   });
 
