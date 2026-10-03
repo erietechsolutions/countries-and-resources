@@ -1,5 +1,13 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
-import type { CityId, CountryId, FlatRing, GeoCity, ProvinceId, WorldGeography } from "@cr/sim";
+import type {
+  CityId,
+  CountryId,
+  FlatRing,
+  GeoCity,
+  ProvinceId,
+  WaterKind,
+  WorldGeography,
+} from "@cr/sim";
 import { ProvinceHitTester } from "./hitTest";
 import { OCEAN } from "./mapModes";
 
@@ -20,6 +28,24 @@ interface CountryLabel {
   size: number;
 }
 
+interface WaterLabel {
+  text: Text;
+  /** Largest font size in map units at which the name fits inside the water. */
+  size: number;
+  /** Largest on-screen font size in pixels, so names stay readable but quiet when zoomed in. */
+  maxPx: number;
+}
+
+const WATER_FONT = 24;
+const WATER_MAX_PX: Record<WaterKind, number> = {
+  ocean: 26,
+  sea: 17,
+  bay: 14,
+  strait: 12,
+  lake: 13,
+};
+const WATER_MIN_PX = 8.5;
+
 const DRAG_THRESHOLD = 5;
 const MAX_ZOOM = 90;
 const MAX_CITY_LABELS = 140;
@@ -39,6 +65,11 @@ export class MapRenderer {
   private provinces = new Container();
   private provinceGfx: Graphics[] = [];
   private coast = new Graphics();
+  private lakes = new Graphics();
+  private lakeShores = new Graphics();
+  private waterLabelLayer = new Container();
+  private waterLabels: WaterLabel[] = [];
+  private lastLabelScale = 0;
   private provinceBorders = new Graphics();
   private countryBorders = new Graphics();
   private selectionGfx = new Graphics();
@@ -155,22 +186,65 @@ export class MapRenderer {
       this.provinces.addChild(g);
     }
 
+    for (const poly of this.geo.lakes) {
+      this.lakes.poly(poly[0]!).fill(OCEAN);
+      for (const island of poly.slice(1)) this.lakes.poly(island).cut();
+      for (const ring of poly) {
+        this.lakeShores.moveTo(ring[0]!, ring[1]!);
+        for (let i = 2; i < ring.length; i += 2) this.lakeShores.lineTo(ring[i]!, ring[i + 1]!);
+        this.lakeShores.closePath();
+      }
+    }
+    this.lakeShores.stroke({ color: 0x6f8aa0, alpha: 0.55, pixelLine: true });
+
     strokeLines(this.coast, this.geo.borders.coast);
     this.coast.stroke({ color: 0x6f8aa0, alpha: 0.55, pixelLine: true });
     strokeLines(this.provinceBorders, this.geo.borders.province);
     this.provinceBorders.stroke({ color: 0x10161d, alpha: 0.28, pixelLine: true });
 
     this.buildCountryLabels();
+    this.buildWaterLabels();
     this.world.addChild(
       this.provinces,
+      this.lakes,
+      this.lakeShores,
       this.coast,
       this.provinceBorders,
       this.countryBorders,
       this.hoverGfx,
       this.selectionGfx,
+      this.waterLabelLayer,
       this.countryLabelLayer,
     );
     this.overlay.addChild(this.cityDots, this.cityLabelLayer);
+  }
+
+  /** Names of oceans, seas, bays, straits and lakes, in the classic italic map style. */
+  private buildWaterLabels(): void {
+    const resolution = Math.max(1.5, 1.25 * (window.devicePixelRatio || 1));
+    for (const w of this.geo.waterLabels) {
+      const ocean = w.kind === "ocean";
+      const text = new Text({
+        text: ocean ? w.name.toUpperCase() : w.name,
+        resolution,
+        style: {
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontStyle: "italic",
+          fontSize: WATER_FONT,
+          letterSpacing: ocean ? 9 : 1.5,
+          align: "center",
+          lineHeight: WATER_FONT * 1.25,
+          fill: w.kind === "lake" ? 0x9fc2dc : 0x86aecb,
+          stroke: { color: OCEAN, width: 4 },
+        },
+      });
+      text.anchor.set(0.5);
+      text.position.set(w.x, w.y);
+      text.rotation = w.rotation;
+      text.visible = false;
+      this.waterLabelLayer.addChild(text);
+      this.waterLabels.push({ text, size: w.size, maxPx: WATER_MAX_PX[w.kind] });
+    }
   }
 
   /** Places each country's name over the middle of its largest connected landmass. */
@@ -225,7 +299,7 @@ export class MapRenderer {
       const size = Math.min(70, Math.sqrt(bestArea) * 0.016);
       const text = new Text({
         text: country.name.toUpperCase(),
-        resolution: 4,
+        resolution: Math.max(2, 1.5 * (window.devicePixelRatio || 1)),
         style: {
           fontFamily: "system-ui, sans-serif",
           fontSize: 32,
@@ -262,7 +336,7 @@ export class MapRenderer {
   private onViewChanged(zoomed = false): void {
     if (!this.ready) return;
     this.clampView();
-    this.updateCountryLabels();
+    this.updateLabels();
     this.drawCities();
     if (zoomed) {
       window.clearTimeout(this.zoomRedrawTimer);
@@ -315,12 +389,36 @@ export class MapRenderer {
     g.stroke({ color: 0xffffff, alpha: 0.7, width: 1.2 / this.world.scale.x });
   }
 
-  private updateCountryLabels(): void {
+  private updateLabels(): void {
     const s = this.world.scale.x;
     for (const { text, size } of this.countryLabels) {
       const px = size * s;
       text.visible = px >= 9 && px <= 44;
       text.alpha = px > 34 ? 0.78 * (1 - (px - 34) / 10) : 0.78;
+    }
+    // Label overlap only depends on zoom, so panning skips this work.
+    if (s === this.lastLabelScale) return;
+    this.lastLabelScale = s;
+    const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    for (const { text, size, maxPx } of this.waterLabels) {
+      const px = size * s;
+      if (px < WATER_MIN_PX) {
+        text.visible = false;
+        continue;
+      }
+      text.scale.set(Math.min(px, maxPx) / s / WATER_FONT);
+      // Labels are sorted biggest first; smaller names give way when they would overlap.
+      // Axis-aligned box around the (possibly rotated) label.
+      const cos = Math.abs(Math.cos(text.rotation));
+      const sin = Math.abs(Math.sin(text.rotation));
+      const hw = ((text.width * cos + text.height * sin) / 2) * 1.05;
+      const hh = ((text.width * sin + text.height * cos) / 2) * 1.05;
+      const box = { x0: text.x - hw, y0: text.y - hh, x1: text.x + hw, y1: text.y + hh };
+      const overlaps = placed.some(
+        (b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0,
+      );
+      text.visible = !overlaps;
+      if (!overlaps) placed.push(box);
     }
   }
 
@@ -369,9 +467,9 @@ export class MapRenderer {
   private drawCityLabels(zoom: number): void {
     const labels: { text: string; x: number; y: number; bold: boolean }[] = [];
     if (this.showCityLabels && zoom >= 2.4) {
-      // Country names take priority; city names are placed around them.
+      // Country and water names take priority; city names are placed around them.
       const occupied: [number, number, number, number][] = [];
-      for (const { text } of this.countryLabels) {
+      for (const { text } of [...this.countryLabels, ...this.waterLabels]) {
         if (!text.visible) continue;
         const b = text.getBounds();
         occupied.push([b.minX, b.minY, b.maxX, b.maxY]);

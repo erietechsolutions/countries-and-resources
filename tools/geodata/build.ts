@@ -12,15 +12,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { geoArea, geoNaturalEarth1, geoPath } from "d3-geo";
-import type { Feature, FeatureCollection, MultiLineString, Point } from "geojson";
+import type { Feature, FeatureCollection, Geometry, MultiLineString, Point } from "geojson";
 import { feature, mesh, neighbors } from "topojson-client";
 import type { GeometryCollection, GeometryObject, Topology } from "topojson-specification";
+import polylabel from "polylabel";
 import type {
   FlatRing,
   GeoCity,
   GeoCountry,
   GeoPolygon,
   GeoProvince,
+  GeoWaterLabel,
+  WaterKind,
   WorldGeography,
 } from "../../packages/sim/src/world/geography";
 import { REAL_WORLD_GEOGRAPHY_ID } from "../../packages/sim/src/world/geography";
@@ -34,6 +37,10 @@ const NE_BASE = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/
 // The "_lakes" variant cuts large lakes (e.g. the Great Lakes) out of province shapes.
 const ADMIN1 = "ne_10m_admin_1_states_provinces_lakes.geojson";
 const PLACES = "ne_10m_populated_places_simple.geojson";
+const MARINE = "ne_10m_geography_marine_polys.geojson";
+const LAKES = "ne_10m_lakes.geojson";
+/** Natural Earth importance rank (0 = largest); smaller lakes are left off the map. */
+const MAX_LAKE_RANK = 7;
 
 /** Width of the projected map in map units. */
 const MAP_WIDTH = 4000;
@@ -121,6 +128,220 @@ function simplifyToTopology(input: string): Topology {
     { stdio: "inherit" },
   );
   return JSON.parse(fs.readFileSync(out, "utf8")) as Topology;
+}
+
+interface WaterProps {
+  name: string | null;
+  featurecla: string;
+  scalerank: number;
+}
+
+function simplifyLakes(input: string): FeatureCollection<Geometry, WaterProps> {
+  const out = path.join(cacheDir, "lakes-simplified.geojson");
+  execFileSync(
+    path.join(root, "node_modules/.bin/mapshaper"),
+    [
+      "-i",
+      input,
+      "-filter",
+      `name != null && name != '' && scalerank <= ${MAX_LAKE_RANK}`,
+      "-filter-fields",
+      "name,featurecla,scalerank",
+      "-simplify",
+      "10%",
+      "keep-shapes",
+      "-o",
+      out,
+      "format=geojson",
+      "force",
+    ],
+    { stdio: "inherit" },
+  );
+  const lakes = JSON.parse(fs.readFileSync(out, "utf8")) as FeatureCollection<Geometry, WaterProps>;
+  // mapshaper writes GeoJSON with RFC 7946 (counter-clockwise) winding, but d3-geo expects
+  // clockwise outer rings; otherwise each lake is read as "the whole globe except the lake".
+  for (const f of lakes.features) {
+    if (geoArea(f) <= 2 * Math.PI) continue;
+    if (f.geometry.type === "Polygon") f.geometry.coordinates.forEach((r) => r.reverse());
+    if (f.geometry.type === "MultiPolygon") {
+      f.geometry.coordinates.forEach((poly) => poly.forEach((r) => r.reverse()));
+    }
+  }
+  return lakes;
+}
+
+const WATER_KINDS: Record<string, WaterKind> = {
+  ocean: "ocean",
+  sea: "sea",
+  gulf: "bay",
+  bay: "bay",
+  fjord: "bay",
+  lagoon: "bay",
+  inlet: "bay",
+  sound: "strait",
+  strait: "strait",
+  channel: "strait",
+};
+
+/** Largest font size (map units) per kind, so small bays never shout over oceans. */
+const WATER_SIZE_CAP: Record<WaterKind, number> = {
+  ocean: 60,
+  sea: 26,
+  bay: 16,
+  strait: 9,
+  lake: 14,
+};
+
+function titleCase(name: string): string {
+  if (name !== name.toUpperCase()) return name;
+  return name
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+    .replace(/\bOf\b/g, "of");
+}
+
+/** Hand-placed ocean labels, as on printed maps: open ocean, clear of coasts and the map edge. */
+const OCEAN_PLACEMENTS: Record<string, { lon: number; lat: number; size: number }> = {
+  "North Pacific Ocean": { lon: -148, lat: 30, size: 44 },
+  "South Pacific Ocean": { lon: -122, lat: -32, size: 44 },
+  "North Atlantic Ocean": { lon: -42, lat: 33, size: 38 },
+  "South Atlantic Ocean": { lon: -15, lat: -28, size: 40 },
+  "Indian Ocean": { lon: 78, lat: -24, size: 44 },
+  "Arctic Ocean": { lon: -165, lat: 79, size: 30 },
+  "Southern Ocean": { lon: 30, lat: -58, size: 34 },
+};
+
+/** Average glyph width of a water label relative to its font size (italic serif). */
+const CHAR_WIDTH = 0.58;
+
+/** Distance from a point along a direction to the first polygon edge it crosses. */
+function rayDistance(rings: GeoPolygon, px: number, py: number, dx: number, dy: number): number {
+  let best = Infinity;
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      const ax = r[j]!,
+        ay = r[j + 1]!;
+      const ex = r[i]! - ax,
+        ey = r[i + 1]! - ay;
+      const denom = dx * ey - dy * ex;
+      if (Math.abs(denom) < 1e-12) continue;
+      const t = ((ax - px) * ey - (ay - py) * ex) / denom;
+      const u = ((ax - px) * dy - (ay - py) * dx) / denom;
+      if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
+    }
+  }
+  return best;
+}
+
+interface Fit {
+  x: number;
+  y: number;
+  size: number;
+}
+
+/**
+ * The largest font size at which `chars` characters fit in the water along `angle`, starting at
+ * (x, y) and also trying the midpoint of the chord through it.
+ */
+function fitAlong(poly: GeoPolygon, x: number, y: number, angle: number, chars: number): Fit {
+  const dx = Math.cos(angle),
+    dy = Math.sin(angle);
+  const sizeAt = (cx: number, cy: number) => {
+    const along =
+      2 * Math.min(rayDistance(poly, cx, cy, dx, dy), rayDistance(poly, cx, cy, -dx, -dy));
+    const across =
+      2 * Math.min(rayDistance(poly, cx, cy, -dy, dx), rayDistance(poly, cx, cy, dy, -dx));
+    return Math.min(across * 0.7, (along * 0.92) / (CHAR_WIDTH * chars));
+  };
+  const forward = rayDistance(poly, x, y, dx, dy);
+  const back = rayDistance(poly, x, y, -dx, -dy);
+  const shift = (forward - back) / 2;
+  const mx = x + dx * shift,
+    my = y + dy * shift;
+  const a = sizeAt(x, y),
+    b = sizeAt(mx, my);
+  return b > a ? { x: mx, y: my, size: b } : { x, y, size: a };
+}
+
+/** Direction of a polygon's long axis (principal component of its outline), in radians. */
+function principalAngle(ring: FlatRing): number {
+  let w = 0,
+    mx = 0,
+    my = 0;
+  const segs: [number, number, number][] = [];
+  for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+    const len = Math.hypot(ring[i]! - ring[j]!, ring[i + 1]! - ring[j + 1]!);
+    const cx = (ring[i]! + ring[j]!) / 2,
+      cy = (ring[i + 1]! + ring[j + 1]!) / 2;
+    segs.push([cx, cy, len]);
+    w += len;
+    mx += cx * len;
+    my += cy * len;
+  }
+  mx /= w;
+  my /= w;
+  let sxx = 0,
+    syy = 0,
+    sxy = 0;
+  for (const [cx, cy, len] of segs) {
+    sxx += (cx - mx) ** 2 * len;
+    syy += (cy - my) ** 2 * len;
+    sxy += (cx - mx) * (cy - my) * len;
+  }
+  return 0.5 * Math.atan2(2 * sxy, sxx - syy);
+}
+
+/**
+ * Places a label inside a body of water: at the point farthest from any shore, either level or
+ * rotated along the water's long axis (for lakes, straits and channels), whichever fits a larger name.
+ */
+function waterLabel(name: string, kind: WaterKind, rings: FlatRing[]): GeoWaterLabel | null {
+  const polygons = groupRings(rings);
+  if (polygons.length === 0) return null;
+  const largest = polygons.reduce((a, b) =>
+    Math.abs(ringArea(b[0]!)) > Math.abs(ringArea(a[0]!)) ? b : a,
+  );
+  const pts = largest.map((ring) => {
+    const out: number[][] = [];
+    for (let i = 0; i < ring.length; i += 2) out.push([ring[i]!, ring[i + 1]!]);
+    return out;
+  });
+  const pole = polylabel(pts, 0.25);
+  const level = fitAlong(largest, pole[0], pole[1], 0, name.length);
+  const angle = principalAngle(largest[0]!);
+  const tilted = fitAlong(largest, pole[0], pole[1], angle, name.length);
+  // Only tilt when it clearly helps; level text is easier to read.
+  const useTilt = Math.abs(angle) > 0.15 && tilted.size > level.size * 1.3;
+  const fit = useTilt ? tilted : level;
+  const size = Math.min(WATER_SIZE_CAP[kind], fit.size);
+  if (size < 0.35) return null;
+  return {
+    name,
+    kind,
+    x: round(fit.x),
+    y: round(fit.y),
+    size: Math.round(size * 100) / 100,
+    rotation: useTilt ? Math.round(angle * 1000) / 1000 : 0,
+  };
+}
+
+function oceanLabel(
+  name: string,
+  projection: (p: [number, number]) => [number, number] | null,
+): GeoWaterLabel | null {
+  const place = OCEAN_PLACEMENTS[name];
+  const pt = place && projection([place.lon, place.lat]);
+  if (!place || !pt) return null;
+  // Long ocean names break onto two lines ("NORTH PACIFIC / OCEAN"), as on printed maps.
+  const text = name.length > 14 ? name.replace(/ Ocean$/, "\nOcean") : name;
+  return {
+    name: text,
+    kind: "ocean",
+    x: round(pt[0]),
+    y: round(pt[1]),
+    size: place.size,
+    rotation: 0,
+  };
 }
 
 /** A d3-geo path context that records projected rings/lines as flat coordinate arrays. */
@@ -237,6 +458,8 @@ function arcIndices(geom: GeometryObject): number[] {
 async function main() {
   const admin1Path = await download(ADMIN1);
   const placesPath = await download(PLACES);
+  const marinePath = await download(MARINE);
+  const lakesPath = await download(LAKES);
   const topology = simplifyToTopology(admin1Path);
   const object = Object.values(topology.objects)[0] as GeometryCollection<AdminProps>;
   const geoms = object.geometries;
@@ -422,6 +645,46 @@ async function main() {
     country.capitalCityId = capital.id;
   }
 
+  console.log("Placing water labels...");
+  const waterLabels: GeoWaterLabel[] = [];
+  const marine = JSON.parse(fs.readFileSync(marinePath, "utf8")) as FeatureCollection<
+    Geometry,
+    WaterProps
+  >;
+  // Some seas are split into several features; label each name once, on its largest piece.
+  const marineByName = new Map<string, { kind: WaterKind; rings: FlatRing[] }>();
+  for (const f of marine.features) {
+    const kind = WATER_KINDS[f.properties.featurecla];
+    if (!kind || !f.properties.name) continue;
+    const name = titleCase(cleanName(f.properties.name));
+    path2d(f);
+    const entry = marineByName.get(name) ?? { kind, rings: [] };
+    entry.rings.push(...recorder.take(3));
+    marineByName.set(name, entry);
+  }
+  for (const [name, { kind, rings }] of marineByName) {
+    const label =
+      kind === "ocean"
+        ? oceanLabel(name, (p) => projection(p) ?? null)
+        : waterLabel(name, kind, rings);
+    if (label) waterLabels.push(label);
+    else if (kind === "ocean") console.warn(`No placement for ocean "${name}"`);
+  }
+
+  const lakeFeatures = simplifyLakes(lakesPath);
+  const lakes: GeoPolygon[] = [];
+  for (const f of lakeFeatures.features) {
+    path2d(f);
+    const polygons = groupRings(recorder.take(3));
+    lakes.push(...polygons);
+    const name = cleanName(f.properties.name ?? "");
+    const rings = polygons.flat();
+    const label = name && rings.length ? waterLabel(name, "lake", rings) : null;
+    if (label) waterLabels.push(label);
+  }
+  // Big names first, so the renderer can give them priority when labels compete for space.
+  waterLabels.sort((a, b) => b.size - a.size);
+
   const geography: WorldGeography = {
     id: REAL_WORLD_GEOGRAPHY_ID,
     name: "Earth",
@@ -431,6 +694,8 @@ async function main() {
     provinces,
     cities,
     borders,
+    lakes,
+    waterLabels,
   };
 
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
@@ -443,7 +708,7 @@ async function main() {
   console.log(
     `Wrote ${path.relative(root, outFile)}: ${(json.length / 1e6).toFixed(1)} MB, ` +
       `${countries.size} countries, ${provinces.length} provinces, ${cities.length} cities, ` +
-      `${vertices} vertices`,
+      `${vertices} vertices, ${lakes.length} lake shapes, ${waterLabels.length} water labels`,
   );
 }
 

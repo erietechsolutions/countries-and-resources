@@ -101,6 +101,8 @@ export function tinyGeography(): WorldGeography {
       },
     ],
     borders: { country: [], province: [], coast: [] },
+    lakes: [],
+    waterLabels: [],
   };
 }
 

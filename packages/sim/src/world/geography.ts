@@ -70,6 +70,21 @@ export interface GeoBorders {
   coast: FlatRing[];
 }
 
+export type WaterKind = "ocean" | "sea" | "bay" | "strait" | "lake";
+
+/** A named body of water, labeled on the map. */
+export interface GeoWaterLabel {
+  name: string;
+  kind: WaterKind;
+  /** Projected label point, inside the body of water. */
+  x: number;
+  y: number;
+  /** Largest font size (in map units) at which the name still fits inside the water. */
+  size: number;
+  /** Text angle in radians (0 = level), following long, narrow waters such as straits. */
+  rotation: number;
+}
+
 export interface WorldGeography {
   id: string;
   name: string;
@@ -80,6 +95,9 @@ export interface WorldGeography {
   provinces: GeoProvince[];
   cities: GeoCity[];
   borders: GeoBorders;
+  /** Inland lakes drawn as water on top of the land. */
+  lakes: GeoPolygon[];
+  waterLabels: GeoWaterLabel[];
 }
 
 /** The geography file id for the real-world map. */
