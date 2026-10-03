@@ -203,6 +203,7 @@ function titleCase(name: string): string {
 /** Names shown in-game in place of Natural Earth's names. */
 const WATER_NAME_OVERRIDES: Record<string, string> = {
   "Gulf of Mexico": "Gulf of America", // official US name since 2025
+  "Lake Ontario": "Lake America", // US executive order, August 2026
 };
 
 /** Hand-placed ocean labels, as on printed maps: open ocean, clear of coasts and the map edge. */
