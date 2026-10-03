@@ -30,3 +30,6 @@ export * from "./work/jobs";
 export * from "./work/occupations";
 export * from "./work/skills";
 export * from "./worldgen/randomMap";
+export * from "./social/people";
+export * from "./social/social";
+export * from "./social/types";

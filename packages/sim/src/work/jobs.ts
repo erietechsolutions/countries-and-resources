@@ -61,6 +61,11 @@ export function hireChance(ctx: GameContext, occ: OccupationDef): number {
   if (p.inventory.items.includes("interviewClothes")) chance *= 1.25;
   chance *= 0.7 + p.needs.happiness / 330;
   if (p.needs.energy < 20) chance *= 0.7;
+  // A good name with employers and fellow workers helps; a criminal reputation hurts.
+  chance *=
+    1 +
+    (p.reputation.business + p.reputation.workers) / 400 -
+    Math.max(0, p.reputation.underworld) / 300;
   return Math.max(0, Math.min(0.9, chance));
 }
 

@@ -77,6 +77,8 @@ export function createNewGame(
       player.housing.kind === "homeless",
       Rng.fromKey(config.worldSeed, "family"),
     ),
+    people: [],
+    nextPersonId: 1,
     log: [],
   };
 

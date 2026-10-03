@@ -25,6 +25,7 @@ import { MapView, type FocusRequest } from "../map/MapView";
 import { HomePanel } from "../panels/HomePanel";
 import { LifePanel } from "../panels/LifePanel";
 import { MoneyPanel } from "../panels/MoneyPanel";
+import { PeoplePanel } from "../panels/PeoplePanel";
 import { WorkPanel } from "../panels/WorkPanel";
 import { useSettings } from "../storage/settings";
 import { AUTOSAVE_ID, newSaveId, writeSave } from "../storage/saves";
@@ -40,11 +41,12 @@ interface Props {
 }
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
-type Tab = "life" | "work" | "money" | "home" | "region";
+type Tab = "life" | "work" | "people" | "money" | "home" | "region";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "life", label: "Life" },
   { id: "work", label: "Work" },
+  { id: "people", label: "People" },
   { id: "money", label: "Money" },
   { id: "home", label: "Home" },
   { id: "region", label: "Region" },
@@ -302,6 +304,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             </div>
             {tab === "life" && <LifePanel />}
             {tab === "work" && <WorkPanel />}
+            {tab === "people" && <PeoplePanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
             {tab === "region" &&

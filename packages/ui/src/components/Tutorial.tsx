@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGameUi } from "../game/GameContext";
 import { updateSettings, useSettings } from "../storage/settings";
 
-type Tab = "life" | "work" | "money" | "home" | "region";
+type Tab = "life" | "work" | "people" | "money" | "home" | "region";
 
 interface Step {
   title: string;

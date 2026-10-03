@@ -23,6 +23,7 @@ const CATEGORY_ORDER: ActivityCategory[] = [
   "hygiene",
   "work",
   "money",
+  "social",
   "home",
   "growth",
 ];
@@ -134,7 +135,8 @@ export function LifePanel() {
   const { game } = useGameUi();
   const p = game.state.player;
   const [showBlocked, setShowBlocked] = useState(true);
-  const visible = ACTIVITIES.filter((a) => !a.system);
+  // Activities done with a specific person live in the People tab.
+  const visible = ACTIVITIES.filter((a) => !a.system && !a.target);
   return (
     <div className="panel-stack">
       <CurrentActivity />

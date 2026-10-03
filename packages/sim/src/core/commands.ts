@@ -5,6 +5,7 @@ import { moveBackHome, rentUnit } from "../life/housing";
 import type { ItemId } from "../life/items";
 import { buyItem, dropCourse, enroll, sellItem } from "../life/shopping";
 import type { UnitType } from "../life/types";
+import { performSocialAction, type SocialAction } from "../social/social";
 import { acceptOffer, leaveJob } from "../work/jobs";
 import type { GameContext } from "./game";
 
@@ -15,7 +16,8 @@ import type { GameContext } from "./game";
  */
 export type Command =
   | { type: "debug.grantCash"; amountCents: number }
-  | { type: "activity.start"; activityId: string; amount?: number }
+  | { type: "activity.start"; activityId: string; amount?: number; targetId?: string }
+  | { type: "social.action"; personId: string; action: SocialAction }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -53,7 +55,9 @@ export const commandHandlers: CommandHandlers = {
     ctx.state.player.cashCents += cmd.amountCents;
     return null;
   },
-  "activity.start": (ctx, cmd) => alive(ctx) ?? startActivity(ctx, cmd.activityId, cmd.amount),
+  "activity.start": (ctx, cmd) =>
+    alive(ctx) ?? startActivity(ctx, cmd.activityId, cmd.amount, cmd.targetId),
+  "social.action": (ctx, cmd) => alive(ctx) ?? performSocialAction(ctx, cmd.personId, cmd.action),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

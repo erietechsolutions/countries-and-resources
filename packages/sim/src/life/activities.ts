@@ -12,15 +12,26 @@ import { occupationById } from "../work/occupations";
 import type { SkillId } from "../work/skills";
 import { averageRelationship, changeRelationship } from "./family";
 import { applyHourlyNeeds, restingPlace, sleepRate, type DecayingNeed } from "./needs";
+import { personById, personName } from "../social/people";
+import {
+  adjustReputation,
+  changeAffection,
+  isRomantic,
+  meetPerson,
+  relationshipWith,
+} from "../social/social";
+import type { Relationship } from "../social/types";
 import type { LedgerCategory, Needs } from "./types";
 
-export type ActivityCategory = "rest" | "food" | "hygiene" | "home" | "work" | "money" | "growth";
+export type ActivityCategory =
+  "rest" | "food" | "hygiene" | "home" | "social" | "work" | "money" | "growth";
 
 export const CATEGORY_LABELS: Record<ActivityCategory, string> = {
   rest: "Rest",
   food: "Food",
   hygiene: "Hygiene",
   home: "Home & family",
+  social: "Social life",
   work: "Work",
   money: "Make money",
   growth: "Self-improvement",
@@ -53,9 +64,11 @@ export interface ActivityDef {
   decay?: Partial<Record<DecayingNeed, number>>;
   /** Need changes per hour, on top of normal decay. */
   effects?(ctx: GameContext): Partial<Needs>;
+  /** Activities done with someone: why this relationship doesn't allow it, or null. */
+  target?(ctx: GameContext, relationship: Relationship): string | null;
   onStart?(ctx: GameContext, amount?: number): void;
   onHour?(ctx: GameContext): void;
-  onFinish?(ctx: GameContext, amount?: number): void;
+  onFinish?(ctx: GameContext, amount?: number, targetId?: string): void;
 }
 
 const hourNow = (ctx: GameContext) => toDateParts(ctx.state.time).hour;
@@ -120,6 +133,30 @@ function streetRobbery(ctx: GameContext, hours: number): void {
   transact(ctx, -stolen, "theft", "Robbed while sleeping");
   p.needs.happiness = Math.max(0, p.needs.happiness - 15);
   ctx.alert("bad", `You were robbed while you slept. ${formatMoney(stolen)} was taken.`);
+}
+
+/** Time spent with someone: more affection the first time each day, and it keeps the friendship alive. */
+function socialBoost(
+  ctx: GameContext,
+  targetId: string | undefined,
+  affection: number,
+  romance: number,
+): void {
+  if (!targetId) return;
+  const r = relationshipWith(ctx.state.player, targetId);
+  if (!r) return;
+  const sameDay =
+    startOfDay(r.lastContact) === startOfDay(ctx.state.time) && r.lastContact !== r.metAt;
+  const scale = sameDay ? 0.3 : 1;
+  const person = personById(ctx, targetId);
+  const kindBonus = person?.traits.includes("kind") || person?.traits.includes("loyal") ? 1.2 : 1;
+  changeAffection(
+    ctx,
+    r,
+    affection * scale * kindBonus,
+    isRomantic(r) || r.romance > 20 ? romance * scale : 0,
+  );
+  r.lastContact = ctx.state.time;
 }
 
 /** The shift hours remaining right now, if the player is due at work. */
@@ -461,6 +498,88 @@ export const ACTIVITIES: ActivityDef[] = [
     },
   },
 
+  // ---- Social life
+  {
+    id: "goOut",
+    label: "Go out (bar, café, club)",
+    category: "social",
+    description: "Have some fun and maybe meet someone new.",
+    interruptible: true,
+    hours: () => 3,
+    unavailable: during(17, 24),
+    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).fastFoodCents * 2,
+    costCategory: "other",
+    effects: () => ({ happiness: 3, energy: -1 }),
+    onFinish: (ctx) => {
+      if (!ctx.rng.chance(ctx.state.player.needs.hygiene < 30 ? 0.25 : 0.6)) return;
+      const person = meetPerson(ctx, "on a night out");
+      ctx.alert("info", `You met ${personName(person)}, ${person.occupation.toLowerCase()}.`);
+    },
+  },
+  {
+    id: "volunteer",
+    label: "Volunteer in your community",
+    category: "social",
+    description: "Help at a food bank, cleanup or community center. Builds your local reputation.",
+    interruptible: true,
+    hours: () => 3,
+    unavailable: during(9, 18),
+    effects: () => ({ happiness: 1.5, energy: -1 }),
+    onFinish: (ctx) => {
+      adjustReputation(ctx, "community", 2);
+      adjustReputation(ctx, "activists", 1);
+      if (ctx.rng.chance(0.35)) {
+        const person = meetPerson(ctx, "volunteering");
+        ctx.alert("info", `You met ${personName(person)} while volunteering.`);
+      }
+    },
+  },
+  {
+    id: "hangOut",
+    label: "Hang out",
+    category: "social",
+    description: "Spend time together.",
+    interruptible: true,
+    hours: () => 2,
+    unavailable: during(9, 24),
+    target: (_ctx, r) =>
+      r.kind === "ex" || r.kind === "rival" ? "They don't want to see you." : null,
+    cost: (ctx) => Math.round(cityCosts(ctx, ctx.state.player.cityId).fastFoodCents * 0.8),
+    costCategory: "other",
+    effects: () => ({ happiness: 4 }),
+    onFinish: (ctx, _amount, targetId) => socialBoost(ctx, targetId, 7, 1),
+  },
+  {
+    id: "date",
+    label: "Go on a date",
+    category: "social",
+    description: "Dinner, a movie, a walk. Builds romance.",
+    interruptible: true,
+    hours: () => 3,
+    unavailable: during(17, 24),
+    target: (_ctx, r) =>
+      isRomantic(r) ||
+      (r.romance >= 30 && r.affection >= 35 && r.kind !== "ex" && r.kind !== "child")
+        ? null
+        : "There's no spark yet (romance 30+ and affection 35+).",
+    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).fastFoodCents * 3,
+    costCategory: "other",
+    effects: () => ({ happiness: 5 }),
+    onFinish: (ctx, _amount, targetId) => socialBoost(ctx, targetId, 5, 7),
+  },
+  {
+    id: "call",
+    label: "Call",
+    category: "social",
+    description: "Catch up by phone.",
+    interruptible: true,
+    hours: () => 1,
+    unavailable: hasItem("phone", "phone"),
+    target: (_ctx, r) => (r.kind === "ex" || r.kind === "rival" ? "They won't pick up." : null),
+    effects: () => ({ happiness: 2 }),
+    onFinish: (ctx, _amount, targetId) => socialBoost(ctx, targetId, 3, 1),
+  },
+
   // ---- Work
   {
     id: "jobSearch",
@@ -689,9 +808,18 @@ export function activityBlocker(
   ctx: GameContext,
   def: ActivityDef,
   amount?: number,
+  targetId?: string,
 ): string | null {
   const p = ctx.state.player;
   if (def.system) return "This happens automatically.";
+  if (def.target) {
+    const r = targetId ? relationshipWith(p, targetId) : undefined;
+    if (!r) return "Choose someone to do this with.";
+    const person = personById(ctx, r.personId);
+    if (!person?.alive) return "They're no longer around.";
+    const reason = def.target(ctx, r);
+    if (reason) return reason;
+  }
   const current = p.activity && activityById(p.activity.id);
   if (current && !current.interruptible)
     return `You can't do that while ${current.label.toLowerCase()}.`;
@@ -715,7 +843,7 @@ function endActivity(ctx: GameContext, reason: "finished" | "cancelled" | "inter
   ctx.events.emit({ type: "activityEnded", activityId: a.id, reason });
 }
 
-function begin(ctx: GameContext, def: ActivityDef, amount?: number): void {
+function begin(ctx: GameContext, def: ActivityDef, amount?: number, targetId?: string): void {
   const p = ctx.state.player;
   if (p.activity) endActivity(ctx, "interrupted");
   const cost = def.cost?.(ctx, amount) ?? 0;
@@ -726,17 +854,23 @@ function begin(ctx: GameContext, def: ActivityDef, amount?: number): void {
     startedAt: now,
     endsAt: now + Math.max(1, def.hours(ctx, amount)),
     amount,
+    ...(targetId ? { targetId } : {}),
   };
   def.onStart?.(ctx, amount);
 }
 
-export function startActivity(ctx: GameContext, id: string, amount?: number): string | null {
+export function startActivity(
+  ctx: GameContext,
+  id: string,
+  amount?: number,
+  targetId?: string,
+): string | null {
   const def = activityById(id);
   if (!def) return `Unknown activity "${id}".`;
   const chosen = def.amount ? (amount ?? def.amount.default(ctx)) : undefined;
-  const blocked = activityBlocker(ctx, def, chosen);
+  const blocked = activityBlocker(ctx, def, chosen, targetId);
   if (blocked) return blocked;
-  begin(ctx, def, chosen);
+  begin(ctx, def, chosen, def.target ? targetId : undefined);
   return null;
 }
 
@@ -844,7 +978,7 @@ export const activitySystem: System = {
       const finished = p.activity;
       const finishedDef = activityById(finished.id);
       p.activity = null;
-      finishedDef?.onFinish?.(ctx, finished.amount);
+      finishedDef?.onFinish?.(ctx, finished.amount, finished.targetId);
       ctx.events.emit({ type: "activityEnded", activityId: finished.id, reason: "finished" });
     }
   },

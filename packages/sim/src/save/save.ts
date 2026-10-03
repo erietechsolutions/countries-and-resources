@@ -1,6 +1,7 @@
 import { fullName, newDailyFlags, type Character } from "../character/character";
 import { Rng } from "../core/rng";
 import { generateFamily } from "../life/family";
+import { emptyReputation } from "../social/types";
 import { emptySkills } from "../work/skills";
 import type { GameTime } from "../core/calendar";
 import type { GameState } from "../core/state";
@@ -81,6 +82,9 @@ function migrateV1toV2(input: unknown): unknown {
     cooldowns: {},
     shelterBedUntil: null,
     alive: true,
+    relationships: [],
+    reputation: emptyReputation(),
+    pregnancy: null,
   };
   state.player = player;
   state.family = generateFamily(

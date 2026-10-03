@@ -1,6 +1,7 @@
 import type { Character } from "../character/character";
 import type { GameContext } from "../core/game";
 import { unitType } from "../economy/costs";
+import { socialHappiness } from "../social/social";
 import type { NeedId, Needs } from "./types";
 
 export const NEED_LABELS: Record<NeedId, string> = {
@@ -44,6 +45,7 @@ export function happinessTarget(p: Character): number {
   if (p.finance.debts.some((d) => d.kind === "collections")) target -= 6;
   for (const n of ["food", "energy", "hygiene"] as const) if (p.needs[n] < 25) target -= 8;
   if (p.needs.health < 40) target -= 8;
+  target += socialHappiness(p);
   return Math.max(5, Math.min(95, target));
 }
 

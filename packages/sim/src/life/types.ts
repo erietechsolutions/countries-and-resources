@@ -119,6 +119,8 @@ export interface ActivityState {
   endsAt: GameTime;
   /** Optional choice made when starting, e.g. meals to buy. */
   amount?: number;
+  /** The person this activity is with (hanging out, dates, calls). */
+  targetId?: string;
 }
 
 export interface DailyFlags {

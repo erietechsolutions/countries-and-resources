@@ -14,6 +14,12 @@ import type {
 } from "../life/types";
 import { STARTING_AGE, type StartingHousing } from "../modes/modes";
 import type { CityId, CountryId } from "../world/geography";
+import {
+  emptyReputation,
+  type Pregnancy,
+  type Relationship,
+  type Reputation,
+} from "../social/types";
 import { emptySkills, type SkillXp } from "../work/skills";
 
 export type Gender = "male" | "female" | "nonbinary";
@@ -65,6 +71,9 @@ export interface Character {
   shelterBedUntil: GameTime | null;
   /** Whether the player is currently alive; death ends the game. */
   alive: boolean;
+  relationships: Relationship[];
+  reputation: Reputation;
+  pregnancy: Pregnancy | null;
 }
 
 export const NAME_LIMIT = 30;
@@ -128,6 +137,9 @@ export function createPlayerCharacter(
     cooldowns: {},
     shelterBedUntil: null,
     alive: true,
+    relationships: [],
+    reputation: emptyReputation(),
+    pregnancy: null,
   };
 }
 
