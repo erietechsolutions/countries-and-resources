@@ -200,6 +200,11 @@ function titleCase(name: string): string {
     .replace(/\bOf\b/g, "of");
 }
 
+/** Names shown in-game in place of Natural Earth's names. */
+const WATER_NAME_OVERRIDES: Record<string, string> = {
+  "Gulf of Mexico": "Gulf of America", // official US name since 2025
+};
+
 /** Hand-placed ocean labels, as on printed maps: open ocean, clear of coasts and the map edge. */
 const OCEAN_PLACEMENTS: Record<string, { lon: number; lat: number; size: number }> = {
   "North Pacific Ocean": { lon: -148, lat: 30, size: 44 },
@@ -656,7 +661,8 @@ async function main() {
   for (const f of marine.features) {
     const kind = WATER_KINDS[f.properties.featurecla];
     if (!kind || !f.properties.name) continue;
-    const name = titleCase(cleanName(f.properties.name));
+    const sourceName = titleCase(cleanName(f.properties.name));
+    const name = WATER_NAME_OVERRIDES[sourceName] ?? sourceName;
     path2d(f);
     const entry = marineByName.get(name) ?? { kind, rings: [] };
     entry.rings.push(...recorder.take(3));
@@ -677,7 +683,8 @@ async function main() {
     path2d(f);
     const polygons = groupRings(recorder.take(3));
     lakes.push(...polygons);
-    const name = cleanName(f.properties.name ?? "");
+    const sourceName = cleanName(f.properties.name ?? "");
+    const name = WATER_NAME_OVERRIDES[sourceName] ?? sourceName;
     const rings = polygons.flat();
     const label = name && rings.length ? waterLabel(name, "lake", rings) : null;
     if (label) waterLabels.push(label);
