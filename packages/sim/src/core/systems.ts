@@ -1,3 +1,9 @@
+import { economySystem } from "../economy/economy";
+import { financeSystem } from "../finance/finance";
+import { activitySystem } from "../life/activities";
+import { familySystem } from "../life/family";
+import { housingSystem } from "../life/housing";
+import { jobsSystem } from "../work/jobs";
 import { ageInYears, type DateParts, toDateParts } from "./calendar";
 import type { GameContext } from "./game";
 
@@ -31,4 +37,17 @@ export const newYearSystem: System = {
   },
 };
 
-export const defaultSystems: readonly System[] = [birthdaySystem, newYearSystem];
+/**
+ * Order matters: the player's hour (needs, activities, shifts) happens first, then the systems
+ * that settle money and housing, and finally the wider world.
+ */
+export const defaultSystems: readonly System[] = [
+  activitySystem,
+  jobsSystem,
+  financeSystem,
+  housingSystem,
+  familySystem,
+  economySystem,
+  birthdaySystem,
+  newYearSystem,
+];

@@ -16,7 +16,8 @@
     "typecheck": "tsc -p packages/sim --noEmit && tsc -p packages/ui --noEmit && tsc -p tools --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "geodata": "tsx tools/geodata/build.ts"
+    "geodata": "tsx tools/geodata/build.ts",
+    "balance": "tsx tools/sim/balance.ts"
   },
   "engines": {
     "node": ">=20"

@@ -1,7 +1,20 @@
-import { addDays, addYears, type GameTime } from "../core/calendar";
+import { addDays, addYears, startOfDay, type GameTime } from "../core/calendar";
 import type { Rng } from "../core/rng";
+import type { CredentialId } from "../education/courses";
+import type { ItemId } from "../life/items";
+import type {
+  ActivityState,
+  DailyFlags,
+  Employment,
+  Enrollment,
+  Finance,
+  Housing,
+  JobOffer,
+  Needs,
+} from "../life/types";
 import { STARTING_AGE, type StartingHousing } from "../modes/modes";
 import type { CityId, CountryId } from "../world/geography";
+import { emptySkills, type SkillXp } from "../work/skills";
 
 export type Gender = "male" | "female" | "nonbinary";
 
@@ -24,8 +37,6 @@ export interface CharacterInput {
   appearance: Appearance;
 }
 
-export type Housing = StartingHousing;
-
 export interface Character {
   id: string;
   firstName: string;
@@ -34,11 +45,26 @@ export interface Character {
   appearance: Appearance;
   birthTime: GameTime;
   cashCents: number;
-  housing: Housing;
   cityId: CityId;
   citizenship: CountryId[];
-  /** 0–100. Needs, skills and the rest of the life simulation arrive in M4/M5. */
-  health: number;
+  needs: Needs;
+  housing: Housing;
+  skills: SkillXp;
+  credentials: CredentialId[];
+  education: Enrollment | null;
+  job: Employment | null;
+  jobOffers: JobOffer[];
+  inventory: { meals: number; items: ItemId[] };
+  activity: ActivityState | null;
+  finance: Finance;
+  prefs: { autoWork: boolean };
+  daily: DailyFlags;
+  /** Earliest time certain actions can be repeated, keyed by action id. */
+  cooldowns: Record<string, GameTime>;
+  /** A reserved shelter bed is valid until this time. */
+  shelterBedUntil: GameTime | null;
+  /** Whether the player is currently alive; death ends the game. */
+  alive: boolean;
 }
 
 export const NAME_LIMIT = 30;
@@ -65,7 +91,7 @@ export function createPlayerCharacter(
   options: {
     startTime: GameTime;
     cashCents: number;
-    housing: Housing;
+    housing: StartingHousing;
     cityId: CityId;
     countryId: CountryId;
   },
@@ -74,6 +100,7 @@ export function createPlayerCharacter(
   // Exactly STARTING_AGE years old on the start date, with a birthday somewhere in the past year.
   const latestBirth = addYears(options.startTime, -STARTING_AGE);
   const birthTime = addDays(latestBirth, -rng.int(0, 364));
+  const homeless = options.housing === "homeless";
   return {
     id: "player",
     firstName: input.firstName.trim(),
@@ -82,10 +109,35 @@ export function createPlayerCharacter(
     appearance: { ...input.appearance },
     birthTime: birthTime - (birthTime % 24),
     cashCents: options.cashCents,
-    housing: options.housing,
     cityId: options.cityId,
     citizenship: [options.countryId],
-    health: options.housing === "homeless" ? 85 : 100,
+    needs: homeless
+      ? { food: 55, energy: 60, hygiene: 35, health: 85, happiness: 35 }
+      : { food: 80, energy: 85, hygiene: 80, health: 100, happiness: 65 },
+    housing: { kind: options.housing },
+    skills: emptySkills(),
+    credentials: ["highSchool"],
+    education: null,
+    job: null,
+    jobOffers: [],
+    inventory: { meals: homeless ? 0 : 2, items: [] },
+    activity: null,
+    finance: { ledger: [], debts: [], creditScore: null, nextDebtId: 1 },
+    prefs: { autoWork: true },
+    daily: newDailyFlags(options.startTime),
+    cooldowns: {},
+    shelterBedUntil: null,
+    alive: true,
+  };
+}
+
+export function newDailyFlags(time: GameTime): DailyFlags {
+  return {
+    day: startOfDay(time),
+    chores: false,
+    familyTalk: false,
+    foodBank: false,
+    jobSearch: false,
   };
 }
 

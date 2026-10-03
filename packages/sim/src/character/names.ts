@@ -52,7 +52,7 @@ const FIRST: Record<Gender, string[]> = {
     "Jamie",
   ],
 };
-const LAST = [
+export const LAST_NAMES = [
   "Smith",
   "Garcia",
   "Chen",
@@ -76,5 +76,5 @@ const LAST = [
 ];
 
 export function randomName(gender: Gender, rng: Rng): { firstName: string; lastName: string } {
-  return { firstName: rng.pick(FIRST[gender]), lastName: rng.pick(LAST) };
+  return { firstName: rng.pick(FIRST[gender]), lastName: rng.pick(LAST_NAMES) };
 }

@@ -8,6 +8,7 @@ import { Rng } from "./core/rng";
 import type { GameState } from "./core/state";
 import { MODES, validateConfig, type GameConfig } from "./modes/modes";
 import type { WorldGeography } from "./world/geography";
+import { generateFamily } from "./life/family";
 import { formatMoney } from "./world/format";
 import type { WorldState } from "./world/types";
 import { generateWorld } from "./worldgen/proceduralWorld";
@@ -70,6 +71,12 @@ export function createNewGame(
     rngState: Rng.fromKey(config.worldSeed, "simulation").state,
     world: world ?? buildWorld(config, geography),
     player,
+    family: generateFamily(
+      player.lastName,
+      city.id,
+      player.housing.kind === "homeless",
+      Rng.fromKey(config.worldSeed, "family"),
+    ),
     log: [],
   };
 
@@ -79,7 +86,7 @@ export function createNewGame(
   const cash = formatMoney(player.cashCents, true);
   game.log(
     "life",
-    player.housing === "homeless"
+    player.housing.kind === "homeless"
       ? `You wake up on the streets of ${where}. You are 18, with ${cash} to your name.`
       : `You wake up in your parents' basement in ${where}. You are 18, with ${cash} to your name.`,
   );

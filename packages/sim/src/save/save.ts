@@ -1,4 +1,7 @@
-import { fullName } from "../character/character";
+import { fullName, newDailyFlags, type Character } from "../character/character";
+import { Rng } from "../core/rng";
+import { generateFamily } from "../life/family";
+import { emptySkills } from "../work/skills";
 import type { GameTime } from "../core/calendar";
 import type { GameState } from "../core/state";
 import type { GameMode } from "../modes/modes";
@@ -6,7 +9,7 @@ import type { WorldGeography } from "../world/geography";
 
 export const SAVE_FORMAT = "countries-and-resources-save";
 /** Bump when GameState changes shape, and add a migration from the previous version. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 /** Shown in the load-game list without parsing the whole state. */
 export interface SaveSummary {
@@ -34,7 +37,63 @@ export class SaveError extends Error {
 }
 
 /** Migrations upgrade a save from version N to N+1. */
-const MIGRATIONS: Record<number, (state: unknown) => unknown> = {};
+const MIGRATIONS: Record<number, (state: unknown) => unknown> = {
+  1: migrateV1toV2,
+};
+
+/**
+ * Version 2 (Phase 2) added the life simulation, family, finances and the economy.
+ * Country economies need the map, so they are filled in when the game is loaded (see Game).
+ */
+function migrateV1toV2(input: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const state = input as any;
+  const old = state.player;
+  const homeless = old.housing === "homeless";
+  const player: Character = {
+    id: old.id,
+    firstName: old.firstName,
+    lastName: old.lastName,
+    gender: old.gender,
+    appearance: old.appearance,
+    birthTime: old.birthTime,
+    cashCents: old.cashCents,
+    cityId: old.cityId,
+    citizenship: old.citizenship,
+    needs: {
+      food: 70,
+      energy: 70,
+      hygiene: homeless ? 40 : 75,
+      health: old.health ?? 100,
+      happiness: homeless ? 35 : 60,
+    },
+    housing: { kind: homeless ? "homeless" : "parents" },
+    skills: emptySkills(),
+    credentials: ["highSchool"],
+    education: null,
+    job: null,
+    jobOffers: [],
+    inventory: { meals: homeless ? 0 : 2, items: [] },
+    activity: null,
+    finance: { ledger: [], debts: [], creditScore: null, nextDebtId: 1 },
+    prefs: { autoWork: true },
+    daily: newDailyFlags(state.time),
+    cooldowns: {},
+    shelterBedUntil: null,
+    alive: true,
+  };
+  state.player = player;
+  state.family = generateFamily(
+    player.lastName,
+    player.cityId,
+    homeless,
+    Rng.fromKey(state.config.worldSeed, "family"),
+  );
+  state.world.companies = [];
+  state.world.companyCities = [];
+  state.world.nextCompanyId = 1;
+  return state;
+}
 
 export function summarize(state: GameState, geography: WorldGeography): SaveSummary {
   const city = geography.cities[state.player.cityId];

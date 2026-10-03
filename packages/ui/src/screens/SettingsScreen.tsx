@@ -1,6 +1,18 @@
 import { updateSettings, useSettings, type Settings } from "../storage/settings";
 
-const TOGGLES: { key: keyof Settings; label: string; description: string }[] = [
+type ToggleKey = Exclude<keyof Settings, "tutorialDone">;
+
+const TOGGLES: { key: ToggleKey; label: string; description: string }[] = [
+  {
+    key: "pauseOnActivityEnd",
+    label: "Pause when idle",
+    description: "Pause the game when an activity ends and your character has nothing to do.",
+  },
+  {
+    key: "pauseOnBadNews",
+    label: "Pause on bad news",
+    description: "Pause when something goes wrong: getting fired, robbed, evicted...",
+  },
   {
     key: "autosave",
     label: "Autosave",
@@ -32,6 +44,12 @@ export function SettingsPanel() {
           />
         </label>
       ))}
+      <button
+        className="btn small align-start"
+        onClick={() => updateSettings({ tutorialDone: false })}
+      >
+        Show the tutorial again
+      </button>
       <div className="muted small">
         Keyboard: <kbd>Space</kbd> pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> speed ·{" "}
         <kbd>Q</kbd>–<kbd>T</kbd> map modes · <kbd>Esc</kbd> menu

@@ -1,7 +1,9 @@
 import type { WorldGeography } from "../world/geography";
+import { ensureCompanies } from "../work/companies";
+import { initCountryEconomy } from "../worldgen/economyInit";
 import { toDateParts } from "./calendar";
 import { commandHandlers, type Command, type CommandHandler, type CommandResult } from "./commands";
-import { EventBus, type LogCategory } from "./events";
+import { EventBus, type AlertLevel, type LogCategory } from "./events";
 import { Rng } from "./rng";
 import { MAX_LOG_ENTRIES, type GameState } from "./state";
 import { defaultSystems, type System } from "./systems";
@@ -11,7 +13,10 @@ export interface GameContext {
   readonly state: GameState;
   readonly geography: WorldGeography;
   readonly rng: Rng;
+  readonly events: EventBus;
   log(category: LogCategory, message: string): void;
+  /** Logs a message and raises it as a notification. */
+  alert(level: AlertLevel, message: string, category?: LogCategory): void;
 }
 
 /**
@@ -34,6 +39,10 @@ export class Game implements GameContext {
       );
     }
     this.rng = new Rng(state.rngState);
+    upgradeWorld(this);
+    // Employers are generated the first time the player lives in a city.
+    ensureCompanies(this, state.player.cityId);
+    this.state.rngState = this.rng.state;
   }
 
   get time() {
@@ -47,14 +56,14 @@ export class Game implements GameContext {
   }
 
   dispatch(command: Command): CommandResult {
-    const handler = commandHandlers[command.type] as CommandHandler<typeof command.type>;
-    const reason = handler ? handler.validate(this, command) : `Unknown command "${command.type}".`;
+    const handler = commandHandlers[command.type] as
+      CommandHandler<typeof command.type> | undefined;
+    const reason = handler ? handler(this, command) : `Unknown command "${command.type}".`;
+    this.state.rngState = this.rng.state;
     if (reason) {
       this.events.emit({ type: "commandRejected", command, reason });
       return { ok: false, reason };
     }
-    handler.apply(this, command);
-    this.state.rngState = this.rng.state;
     this.events.emit({ type: "commandApplied", command });
     return { ok: true };
   }
@@ -66,6 +75,11 @@ export class Game implements GameContext {
       this.state.log.splice(0, this.state.log.length - MAX_LOG_ENTRIES);
     }
     this.events.emit({ type: "log", entry });
+  }
+
+  alert(level: AlertLevel, message: string, category: LogCategory = "life"): void {
+    this.log(category, message);
+    this.events.emit({ type: "alert", level, message });
   }
 
   private step(): void {
@@ -87,5 +101,19 @@ export class Game implements GameContext {
 
     for (const s of this.systems) s.onYear?.(this, date);
     this.events.emit({ type: "year", time });
+  }
+}
+
+/** Fills in world data that older saves lack and that needs the map to compute. */
+function upgradeWorld(game: Game): void {
+  for (const geoCountry of game.geography.countries) {
+    const country = game.state.world.countries[geoCountry.id];
+    if (!country || country.economy) continue;
+    const provinces = geoCountry.provinceIds.map((id) => game.state.world.provinces[id]!);
+    initCountryEconomy(
+      country,
+      provinces,
+      Rng.fromKey(game.state.config.worldSeed, `economy:${geoCountry.id}`),
+    );
   }
 }

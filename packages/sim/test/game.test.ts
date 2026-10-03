@@ -105,7 +105,7 @@ describe("new game", () => {
     const p = game.state.player;
     expect(ageInYears(p.birthTime, game.time)).toBe(18);
     expect(p.cashCents).toBe(0);
-    expect(p.housing).toBe("homeless");
+    expect(p.housing).toEqual({ kind: "homeless" });
     expect(p.citizenship).toEqual(["AAA"]);
     expect(toDateParts(game.time)).toMatchObject({ year: 2026, month: 10, day: 3, hour: 8 });
     expect(game.state.log.at(-1)?.message).toContain("streets of Acity");

@@ -1,7 +1,8 @@
 import type { GameTime } from "./calendar";
 import type { Command } from "./commands";
 
-export type LogCategory = "system" | "life" | "economy" | "politics";
+export type LogCategory = "system" | "life" | "work" | "money" | "economy" | "politics";
+export type AlertLevel = "good" | "bad" | "info";
 
 export interface LogEntry {
   time: GameTime;
@@ -16,6 +17,10 @@ export type SimEvent =
   | { type: "month"; time: GameTime }
   | { type: "year"; time: GameTime }
   | { type: "log"; entry: LogEntry }
+  /** Something the player should notice right away (shown as a notification). */
+  | { type: "alert"; level: AlertLevel; message: string }
+  /** The player's current activity ended (finished, cancelled or interrupted). */
+  | { type: "activityEnded"; activityId: string; reason: "finished" | "cancelled" | "interrupted" }
   | { type: "commandApplied"; command: Command }
   | { type: "commandRejected"; command: Command; reason: string };
 

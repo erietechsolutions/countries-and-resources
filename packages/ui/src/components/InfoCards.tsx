@@ -1,6 +1,8 @@
 import {
   BIOME_LABELS,
   GOVERNMENT_LABELS,
+  HEALTHCARE_LABELS,
+  PHASE_LABELS,
   RESOURCE_LABELS,
   formatCompact,
   formatMoney,
@@ -86,6 +88,21 @@ export function CountryCard({
         <span className="stat-label">Stability</span>
         <StabilityBar value={c.stability} />
         <span className="small">{c.stability}</span>
+      </div>
+      <h4>Economy</h4>
+      <div className="stat-grid compact">
+        <Stat label="Economy" value={PHASE_LABELS[c.economy.phase]} />
+        <Stat
+          label="Growth"
+          value={formatPercent(c.economy.growth)}
+          hint="Yearly real GDP growth"
+        />
+        <Stat label="Healthcare" value={HEALTHCARE_LABELS[c.healthcare]} />
+        <Stat
+          label="Social services"
+          value={c.socialServices > 0.6 ? "Strong" : c.socialServices > 0.3 ? "Basic" : "Minimal"}
+          hint="Shelters, food banks and welfare"
+        />
       </div>
       <h4>Leadership</h4>
       <p className="small">

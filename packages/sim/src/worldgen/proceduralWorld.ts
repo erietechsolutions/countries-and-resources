@@ -10,6 +10,7 @@ import type {
   WorldState,
 } from "../world/types";
 import { hslToHex, POLITICAL_HUES } from "./color";
+import { initCountryEconomy } from "./economyInit";
 import { generateParties } from "./parties";
 
 /**
@@ -54,6 +55,11 @@ export function generateWorld(geography: WorldGeography, seed: number): WorldSta
     }
 
     generateProvinces(geography, geoProvinces, provinceBiomes, country, seed, provinces);
+    initCountryEconomy(
+      country,
+      geoCountry.provinceIds.map((id) => provinces[id]!),
+      Rng.fromKey(seed, `economy:${geoCountry.id}`),
+    );
   }
 
   const citiesByProvince = new Map<number, GeoCity[]>();
@@ -67,7 +73,15 @@ export function generateWorld(geography: WorldGeography, seed: number): WorldSta
     cities[geoCity.id] = generateCity(geoCity, siblings, countries, provinces, seed);
   }
 
-  return { geographyId: geography.id, countries, provinces, cities };
+  return {
+    geographyId: geography.id,
+    countries,
+    companies: [],
+    companyCities: [],
+    nextCompanyId: 1,
+    provinces,
+    cities,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -164,6 +178,11 @@ function generateCountry(id: CountryId, dev: number, color: number, rng: Rng): C
     parties,
     rulingPartyId,
     color,
+    // Filled in by initCountryEconomy once the country's provinces exist.
+    economy: undefined as unknown as CountryState["economy"],
+    pops: [],
+    healthcare: "none",
+    socialServices: 0,
   };
 }
 

@@ -1,3 +1,4 @@
+import type { Sector } from "../work/occupations";
 import type { CityId, CountryId, ProvinceId } from "./geography";
 
 /**
@@ -55,6 +56,62 @@ export interface Taxes {
   sales: number;
 }
 
+export type EconomicPhase = "expansion" | "recession" | "recovery";
+
+export const PHASE_LABELS: Record<EconomicPhase, string> = {
+  expansion: "Growing",
+  recession: "Recession",
+  recovery: "Recovering",
+};
+
+/** Price multipliers for broad categories of goods, relative to the world average. */
+export interface GoodsPrices {
+  food: number;
+  energy: number;
+  housing: number;
+  goods: number;
+}
+export type Good = keyof GoodsPrices;
+
+export interface Economy {
+  phase: EconomicPhase;
+  monthsInPhase: number;
+  /** Yearly real GDP growth (0.025 = 2.5%). */
+  growth: number;
+  /** The unemployment rate the economy settles at in normal times. */
+  naturalUnemployment: number;
+  /** The inflation rate the economy settles at in normal times. */
+  baseInflation: number;
+  /** Cumulative price level since the game began (1 = start). */
+  priceIndex: number;
+  /** Cumulative nominal wage level since the game began (1 = start). */
+  wageIndex: number;
+  goods: GoodsPrices;
+  /** Long-run goods price levels that temporary shocks decay back to. */
+  goodsBaseline: GoodsPrices;
+}
+
+export type PopClass = "lower" | "middle" | "upper";
+
+/** A large group of people in the same social class, tracked as one unit. */
+export interface Pop {
+  class: PopClass;
+  /** Share of the population, 0–1. */
+  share: number;
+  /** Average monthly income per person, in cents. */
+  incomeCents: number;
+  /** 0–100: how well this class is doing. Drives national stability. */
+  satisfaction: number;
+}
+
+export type Healthcare = "universal" | "insurance" | "none";
+
+export const HEALTHCARE_LABELS: Record<Healthcare, string> = {
+  universal: "Universal (free)",
+  insurance: "Insurance-based",
+  none: "Pay out of pocket",
+};
+
 export interface CountryState {
   id: CountryId;
   government: GovernmentType;
@@ -80,6 +137,11 @@ export interface CountryState {
   rulingPartyId: string | null;
   /** Political map color. */
   color: number;
+  economy: Economy;
+  pops: Pop[];
+  healthcare: Healthcare;
+  /** 0–1: shelters, food banks and welfare available to people in need. */
+  socialServices: number;
 }
 
 export type Biome =
@@ -133,9 +195,29 @@ export interface CityState {
   costOfLivingIndex: number;
 }
 
+/** An NPC employer. Companies exist for the city the player lives in. */
+export interface Company {
+  id: string;
+  name: string;
+  sector: Sector;
+  cityId: CityId;
+  employees: number;
+  /** Pay relative to the local norm (0.85–1.25). */
+  wageFactor: number;
+  /** 0–100 financial health. Falling below 0 means bankruptcy. */
+  health: number;
+  /** Open positions by occupation id. */
+  openings: Record<string, number>;
+  foundedAt: number;
+}
+
 export interface WorldState {
   geographyId: string;
   countries: Record<CountryId, CountryState>;
+  companies: Company[];
+  /** Cities whose companies have been generated. */
+  companyCities: CityId[];
+  nextCompanyId: number;
   /** Indexed by ProvinceId. */
   provinces: ProvinceState[];
   /** Indexed by CityId. */

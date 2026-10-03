@@ -1,4 +1,5 @@
 import type { Character } from "../character/character";
+import type { FamilyMember } from "../life/types";
 import type { GameConfig } from "../modes/modes";
 import type { WorldState } from "../world/types";
 import type { GameTime } from "./calendar";
@@ -11,6 +12,7 @@ export interface GameState {
   rngState: number;
   world: WorldState;
   player: Character;
+  family: FamilyMember[];
   /** Most recent messages, newest last. */
   log: LogEntry[];
 }

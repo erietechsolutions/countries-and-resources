@@ -5,10 +5,22 @@ export interface Settings {
   autosave: boolean;
   showProvinceBorders: boolean;
   showCityLabels: boolean;
+  /** Pause when the current activity ends and the character is idle. */
+  pauseOnActivityEnd: boolean;
+  /** Pause when something bad happens (fired, robbed, evicted...). */
+  pauseOnBadNews: boolean;
+  tutorialDone: boolean;
 }
 
 const KEY = "cr.settings";
-const DEFAULTS: Settings = { autosave: true, showProvinceBorders: true, showCityLabels: true };
+const DEFAULTS: Settings = {
+  autosave: true,
+  showProvinceBorders: true,
+  showCityLabels: true,
+  pauseOnActivityEnd: true,
+  pauseOnBadNews: true,
+  tutorialDone: false,
+};
 
 function read(): Settings {
   try {
