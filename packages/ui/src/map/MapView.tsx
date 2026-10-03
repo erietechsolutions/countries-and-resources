@@ -75,7 +75,8 @@ export function MapView({
     if (!loaded) return;
     rendererRef.current?.setShowProvinceBorders(settings.showProvinceBorders);
     rendererRef.current?.setShowCityLabels(settings.showCityLabels);
-  }, [loaded, settings.showProvinceBorders, settings.showCityLabels]);
+    rendererRef.current?.setShowTowns(settings.showTowns);
+  }, [loaded, settings.showProvinceBorders, settings.showCityLabels, settings.showTowns]);
 
   useEffect(() => {
     if (loaded && focus) rendererRef.current?.focus(focus.x, focus.y, focus.zoom);

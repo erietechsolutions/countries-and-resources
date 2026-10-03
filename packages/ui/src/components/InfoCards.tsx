@@ -9,11 +9,14 @@ import {
   formatPercent,
   type CityId,
   type CountryId,
+  type GeoCity,
   type ProvinceId,
   type WorldGeography,
   type WorldState,
 } from "@cr/sim";
+import { useState } from "react";
 import { hex } from "../map/mapModes";
+import { useSettings } from "../storage/settings";
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -143,6 +146,8 @@ interface ProvinceCardProps {
   selectedCityId?: CityId | null;
   onSelectCity?(id: CityId): void;
   cityActionLabel?: string;
+  /** A city to keep listed even if it is a hidden town (e.g. where the player lives). */
+  highlightCityId?: CityId | null;
 }
 
 export function ProvinceCard({
@@ -152,11 +157,17 @@ export function ProvinceCard({
   selectedCityId,
   onSelectCity,
   cityActionLabel,
+  highlightCityId,
 }: ProvinceCardProps) {
+  const { showTowns } = useSettings();
+  const [expanded, setExpanded] = useState(false);
   const gp = geo.provinces[provinceId];
   const p = world.provinces[provinceId];
   if (!gp || !p) return null;
-  const cities = geo.cities.filter((c) => c.provinceId === provinceId);
+  const all = citiesOf(geo, provinceId).filter(
+    (c) => showTowns || !c.minor || c.id === selectedCityId || c.id === highlightCityId,
+  );
+  const cities = expanded ? all : all.slice(0, CITY_LIST_LIMIT);
   return (
     <section className="card">
       <h3>{gp.name}</h3>
@@ -214,8 +225,37 @@ export function ProvinceCard({
           })}
         </ul>
       )}
+      {all.length > CITY_LIST_LIMIT && (
+        <button className="btn small" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Show fewer" : `Show all ${all.length} cities and towns`}
+        </button>
+      )}
     </section>
   );
+}
+
+const CITY_LIST_LIMIT = 12;
+const cityIndex = new WeakMap<WorldGeography, Map<number, GeoCity[]>>();
+
+/** Cities of a province, largest first (cached per map, since there are ~25,000 cities). */
+function citiesOf(geo: WorldGeography, provinceId: number): GeoCity[] {
+  let index = cityIndex.get(geo);
+  if (!index) {
+    index = new Map();
+    for (const c of geo.cities) {
+      const list = index.get(c.provinceId) ?? [];
+      list.push(c);
+      index.set(c.provinceId, list);
+    }
+    // National capital first, then by size.
+    for (const list of index.values()) {
+      list.sort(
+        (a, b) => Number(b.capital === 2) - Number(a.capital === 2) || b.importance - a.importance,
+      );
+    }
+    cityIndex.set(geo, index);
+  }
+  return index.get(provinceId) ?? [];
 }
 
 export function CitySummary({

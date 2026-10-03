@@ -461,6 +461,191 @@ function arcIndices(geom: GeometryObject): number[] {
   return out;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Towns (GeoNames, CC BY 4.0)
+
+const GEONAMES = "https://download.geonames.org/export/dump/cities1000.zip";
+/** Towns at or above this population are added (shown in game only when the setting is on). */
+const MIN_TOWN_POPULATION = 20_000;
+/** Smaller places added by request; always shown. Keyed by GeoNames id. */
+const FEATURED_TOWNS = new Set(["5011989" /* Temperance, Michigan */]);
+/** GeoNames feature codes for real towns (excludes city districts, historical and abandoned places). */
+const TOWN_CODES = new Set([
+  "PPL",
+  "PPLA",
+  "PPLA2",
+  "PPLA3",
+  "PPLA4",
+  "PPLA5",
+  "PPLC",
+  "PPLG",
+  "PPLS",
+  "PPLL",
+  "PPLF",
+  "PPLR",
+]);
+
+async function downloadGeoNames(): Promise<string> {
+  const txt = path.join(cacheDir, "cities1000.txt");
+  if (!fs.existsSync(txt)) {
+    const zip = path.join(cacheDir, "cities1000.zip");
+    if (!fs.existsSync(zip)) {
+      console.log("Downloading GeoNames cities1000...");
+      const res = await fetch(GEONAMES);
+      if (!res.ok) throw new Error(`GeoNames download failed: ${res.status}`);
+      fs.writeFileSync(zip, Buffer.from(await res.arrayBuffer()));
+    }
+    execFileSync("unzip", ["-o", "-q", zip, "-d", cacheDir]);
+  }
+  return txt;
+}
+
+const normalizeName = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const r = Math.PI / 180;
+  const a =
+    Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
+/** Buckets points into 1° cells for fast "anything nearby?" checks. */
+class LatLonGrid<T extends { lat: number; lon: number }> {
+  private cells = new Map<string, T[]>();
+  add(item: T) {
+    const key = `${Math.floor(item.lat)}|${Math.floor(item.lon)}`;
+    const list = this.cells.get(key) ?? [];
+    list.push(item);
+    this.cells.set(key, list);
+  }
+  near(lat: number, lon: number): T[] {
+    const out: T[] = [];
+    for (let a = -1; a <= 1; a++) {
+      for (let b = -1; b <= 1; b++)
+        out.push(...(this.cells.get(`${Math.floor(lat) + a}|${Math.floor(lon) + b}`) ?? []));
+    }
+    return out;
+  }
+}
+
+type TownDraft = Omit<GeoCity, "id">;
+
+function buildTowns(
+  file: string,
+  projection: (p: [number, number]) => [number, number] | null,
+  provinces: GeoProvince[],
+  countries: Map<string, GeoCountry>,
+  existing: { lat: number; lon: number; name: string }[],
+): TownDraft[] {
+  // Coarse grid over projected space to find the province under a point quickly.
+  const CELL = 40;
+  const grid = new Map<string, GeoProvince[]>();
+  for (const p of provinces) {
+    for (let cx = Math.floor(p.bbox[0] / CELL); cx <= Math.floor(p.bbox[2] / CELL); cx++) {
+      for (let cy = Math.floor(p.bbox[1] / CELL); cy <= Math.floor(p.bbox[3] / CELL); cy++) {
+        const key = `${cx}|${cy}`;
+        const list = grid.get(key) ?? [];
+        list.push(p);
+        grid.set(key, list);
+      }
+    }
+  }
+  const provinceAt = (x: number, y: number): GeoProvince | undefined => {
+    const list = grid.get(`${Math.floor(x / CELL)}|${Math.floor(y / CELL)}`) ?? [];
+    const hit = list.find(
+      (p) =>
+        x >= p.bbox[0] &&
+        x <= p.bbox[2] &&
+        y >= p.bbox[1] &&
+        y <= p.bbox[3] &&
+        inPolygons(x, y, p.polygons),
+    );
+    if (hit) return hit;
+    // Coastal towns can fall just outside simplified coastlines: take the closest nearby province.
+    let best: GeoProvince | undefined;
+    let bestD = 3 * 3;
+    for (const p of list) {
+      const d = (p.label[0] - x) ** 2 + (p.label[1] - y) ** 2;
+      const cx = Math.max(p.bbox[0], Math.min(x, p.bbox[2]));
+      const cy = Math.max(p.bbox[1], Math.min(y, p.bbox[3]));
+      const edge = (cx - x) ** 2 + (cy - y) ** 2;
+      if (edge < bestD && d < 400 ** 2) {
+        bestD = edge;
+        best = p;
+      }
+    }
+    return best;
+  };
+
+  const known = new LatLonGrid<{ lat: number; lon: number; names: Set<string> }>();
+  for (const c of existing)
+    known.add({ lat: c.lat, lon: c.lon, names: new Set([normalizeName(c.name)]) });
+
+  const rows = fs
+    .readFileSync(file, "utf8")
+    .split("\n")
+    .map((line) => line.split("\t"))
+    .filter((f) => f.length > 14)
+    .map((f) => ({
+      id: f[0]!,
+      name: cleanName(f[1]!),
+      ascii: f[2]!,
+      alternates: f[3]!,
+      lat: Number(f[4]),
+      lon: Number(f[5]),
+      code: f[7]!,
+      population: Number(f[14]),
+    }))
+    .filter(
+      (r) =>
+        FEATURED_TOWNS.has(r.id) || (r.population >= MIN_TOWN_POPULATION && TOWN_CODES.has(r.code)),
+    )
+    .sort((a, b) => b.population - a.population);
+
+  const towns: TownDraft[] = [];
+  let duplicates = 0;
+  for (const r of rows) {
+    const names = new Set(
+      [r.name, r.ascii, ...r.alternates.split(",")].map(normalizeName).filter(Boolean),
+    );
+    const nearby = known.near(r.lat, r.lon);
+    const duplicate = nearby.some((k) => {
+      const km = haversineKm(r.lat, r.lon, k.lat, k.lon);
+      return km < 4 || (km < 25 && [...k.names].some((n) => names.has(n)));
+    });
+    if (duplicate && !FEATURED_TOWNS.has(r.id)) {
+      duplicates++;
+      continue;
+    }
+    const pt = projection([r.lon, r.lat]);
+    if (!pt) continue;
+    const province = provinceAt(pt[0], pt[1]);
+    if (!province || !countries.get(province.countryId)?.habitable) continue;
+    known.add({ lat: r.lat, lon: r.lon, names });
+    const featured = FEATURED_TOWNS.has(r.id);
+    towns.push({
+      name: r.name,
+      provinceId: province.id,
+      countryId: province.countryId,
+      x: round(pt[0]),
+      y: round(pt[1]),
+      capital: r.code === "PPLA" ? 1 : 0,
+      importance: Math.round(Math.log10(Math.max(r.population, 500)) * 100) / 100,
+      ...(featured ? {} : { minor: true as const }),
+    });
+  }
+  console.log(
+    `  ${towns.length} towns added, ${duplicates} skipped as duplicates of existing cities`,
+  );
+  return towns;
+}
+
 async function main() {
   const admin1Path = await download(ADMIN1);
   const placesPath = await download(PLACES);
@@ -578,7 +763,8 @@ async function main() {
     return best!;
   };
 
-  const cityKeys = new Map<string, GeoCity & { pop: number; nationalCapital: boolean }>();
+  type CityDraft = GeoCity & { pop: number; nationalCapital: boolean; lat: number; lon: number };
+  const cityKeys = new Map<string, CityDraft>();
   for (const place of places.features) {
     const pr = place.properties;
     if (EXCLUDED_PLACE_CLASSES.has(pr.featurecla)) continue;
@@ -611,6 +797,8 @@ async function main() {
       importance: Math.round(Math.log10(Math.max(pr.pop_max, 500)) * 100) / 100,
       pop: pr.pop_max,
       nationalCapital,
+      lat: pr.latitude,
+      lon: pr.longitude,
     });
   }
 
@@ -632,14 +820,15 @@ async function main() {
       importance: 3.5,
       pop: 0,
       nationalCapital: true,
+      lat: largest.lat,
+      lon: largest.lon,
     });
   }
 
   const sortedCities = [...cityKeys.values()].sort((a, b) => b.importance - a.importance);
-  const cities: GeoCity[] = sortedCities.map(({ pop: _pop, nationalCapital: _nc, ...c }, id) => ({
-    ...c,
-    id,
-  }));
+  const cities: GeoCity[] = sortedCities.map(
+    ({ pop: _pop, nationalCapital: _nc, lat: _lat, lon: _lon, ...c }, id) => ({ ...c, id }),
+  );
 
   // One national capital per country: the largest city flagged as capital, else the largest city.
   for (const country of countries.values()) {
@@ -650,6 +839,17 @@ async function main() {
     capital.capital = 2;
     country.capitalCityId = capital.id;
   }
+
+  console.log("Adding towns from GeoNames...");
+  const towns = buildTowns(
+    await downloadGeoNames(),
+    projection,
+    provinces,
+    countries,
+    sortedCities.map((c) => ({ lat: c.lat, lon: c.lon, name: c.name })),
+  );
+  // Towns are appended after the main cities so existing city ids (used by saves) never change.
+  for (const t of towns) cities.push({ ...t, id: cities.length });
 
   console.log("Placing water labels...");
   const waterLabels: GeoWaterLabel[] = [];

@@ -24,6 +24,11 @@
   reference it by id.
 - `WorldState` is everything that changes: economies, governments, parties, population. It is
   stored in saves.
+- The real-world map has ~7,300 main cities (Natural Earth) plus ~17,700 towns of 20,000+
+  people (GeoNames), marked `minor`. Towns always exist in the simulation; the "Smaller towns"
+  setting only controls whether the map and location lists show them. New towns are appended
+  after existing cities so city ids in saves never change, and older saves get data for added
+  towns generated on load. Temperance, Michigan is included by request despite its size.
 - Both map types (real-world now, random in M8) produce the same `WorldGeography` structure, so
   nothing downstream knows which map it is on.
 
@@ -55,8 +60,11 @@ positions with their relative sizes. Everything economic and political is genera
   banned opposition parties.
 - **Biomes** come from latitude plus noise, smoothed with neighbors. Resources are drawn per
   biome, and coastal provinces add fish.
-- **Population** is spread over habitable land; city sizes, wages, rents and living costs follow
-  from that.
+- **Population**: each country's people are split into rural (spread over usable land) and urban
+  (shared among its cities by their relative size on the map). A region's population is its rural
+  share plus its cities, so big cities stay big even in tiny regions like Brussels. Countries full
+  of large settlements get a population floor. Wages, rents and living costs follow from size and
+  development.
 
 ## Saves
 

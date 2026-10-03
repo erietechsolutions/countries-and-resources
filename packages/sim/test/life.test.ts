@@ -377,3 +377,14 @@ describe("warnings", () => {
     expect(alerts.filter((a) => a.includes("starving"))).toHaveLength(1);
   });
 });
+
+describe("map updates", () => {
+  it("fills in cities added to the map after a save was made", () => {
+    const game = newGame();
+    const state = JSON.parse(JSON.stringify(game.state));
+    state.world.cities = state.world.cities.slice(0, 2); // pretend city 2 didn't exist yet
+    const loaded = new Game(state, geo);
+    expect(loaded.state.world.cities).toHaveLength(geo.cities.length);
+    expect(loaded.state.world.cities[2]!.rentCents).toBeGreaterThan(0);
+  });
+});

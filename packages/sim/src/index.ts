@@ -13,7 +13,7 @@ export * from "./save/save";
 export * from "./world/geography";
 export * from "./world/types";
 export * from "./world/format";
-export { generateWorld } from "./worldgen/proceduralWorld";
+export { generateMissingCities, generateWorld } from "./worldgen/proceduralWorld";
 export * from "./economy/costs";
 export * from "./economy/economy";
 export * from "./education/courses";

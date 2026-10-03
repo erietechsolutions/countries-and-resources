@@ -24,6 +24,12 @@ const TOGGLES: { key: ToggleKey; label: string; description: string }[] = [
     description: "Draw borders between regions inside countries.",
   },
   { key: "showCityLabels", label: "City names", description: "Show city names when zoomed in." },
+  {
+    key: "showTowns",
+    label: "Smaller towns",
+    description:
+      "Show all towns with 20,000+ people on the map and in location lists (about 18,000 more places).",
+  },
 ];
 
 export function SettingsPanel() {

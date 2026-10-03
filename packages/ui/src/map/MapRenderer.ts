@@ -89,6 +89,7 @@ export class MapRenderer {
   private hoverId: ProvinceId | null = null;
   private playerCityId: CityId | null = null;
   private showCityLabels = true;
+  private showTowns = true;
   private zoomRedrawTimer = 0;
   private drag: { x: number; y: number; px: number; py: number; moved: boolean } | null = null;
   private cleanup: (() => void)[] = [];
@@ -153,6 +154,11 @@ export class MapRenderer {
     this.provinceBorders.visible = show;
   }
 
+  setShowTowns(show: boolean): void {
+    this.showTowns = show;
+    if (this.ready) this.drawCities();
+  }
+
   setShowCityLabels(show: boolean): void {
     this.showCityLabels = show;
     if (this.ready) this.drawCities();
@@ -203,6 +209,7 @@ export class MapRenderer {
     this.provinceBorders.stroke({ color: 0x10161d, alpha: 0.28, pixelLine: true });
 
     this.buildCountryLabels();
+    this.countryLabels.sort((a, b) => b.size - a.size);
     this.buildWaterLabels();
     this.world.addChild(
       this.provinces,
@@ -389,17 +396,31 @@ export class MapRenderer {
     g.stroke({ color: 0xffffff, alpha: 0.7, width: 1.2 / this.world.scale.x });
   }
 
+  /** Country and water label visibility. Only depends on zoom, so panning skips this work. */
   private updateLabels(): void {
     const s = this.world.scale.x;
-    for (const { text, size } of this.countryLabels) {
-      const px = size * s;
-      text.visible = px >= 9 && px <= 44;
-      text.alpha = px > 34 ? 0.78 * (1 - (px - 34) / 10) : 0.78;
-    }
-    // Label overlap only depends on zoom, so panning skips this work.
     if (s === this.lastLabelScale) return;
     this.lastLabelScale = s;
-    const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    type Box = { x0: number; y0: number; x1: number; y1: number };
+    const placed: Box[] = [];
+    const overlaps = (box: Box) =>
+      placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0);
+
+    // Country names: biggest countries first; a smaller name hides if it would collide.
+    for (const { text, size } of this.countryLabels) {
+      const px = size * s;
+      let visible = px >= 9 && px <= 44;
+      text.alpha = px > 34 ? 0.78 * (1 - (px - 34) / 10) : 0.78;
+      if (visible) {
+        const hw = (text.width / 2) * 1.04;
+        const hh = (text.height / 2) * 1.04;
+        const box = { x0: text.x - hw, y0: text.y - hh, x1: text.x + hw, y1: text.y + hh };
+        visible = !overlaps(box);
+        if (visible) placed.push(box);
+      }
+      text.visible = visible;
+    }
+
     for (const { text, size, maxPx } of this.waterLabels) {
       const px = size * s;
       if (px < WATER_MIN_PX) {
@@ -414,11 +435,9 @@ export class MapRenderer {
       const hw = ((text.width * cos + text.height * sin) / 2) * 1.05;
       const hh = ((text.width * sin + text.height * cos) / 2) * 1.05;
       const box = { x0: text.x - hw, y0: text.y - hh, x1: text.x + hw, y1: text.y + hh };
-      const overlaps = placed.some(
-        (b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0,
-      );
-      text.visible = !overlaps;
-      if (!overlaps) placed.push(box);
+      const hidden = overlaps(box);
+      text.visible = !hidden;
+      if (!hidden) placed.push(box);
     }
   }
 
@@ -433,6 +452,8 @@ export class MapRenderer {
 
     this.visibleCities = [];
     for (const city of this.geo.cities) {
+      const pinned = city.id === this.selection.cityId || city.id === this.playerCityId;
+      if (city.minor && !this.showTowns && !pinned) continue;
       const important =
         city.importance >= minImportance ||
         (city.capital === 2 && zoom >= 1.8) ||
@@ -474,8 +495,13 @@ export class MapRenderer {
         const b = text.getBounds();
         occupied.push([b.minX, b.minY, b.maxX, b.maxY]);
       }
+      // The selected city and the player's home always get a label, then capitals, then by size.
+      const isPinned = (c: GeoCity) => c.id === this.selection.cityId || c.id === this.playerCityId;
       const ordered = [...this.visibleCities].sort(
-        (a, b) => b.city.capital - a.city.capital || b.city.importance - a.city.importance,
+        (a, b) =>
+          Number(isPinned(b.city)) - Number(isPinned(a.city)) ||
+          b.city.capital - a.city.capital ||
+          b.city.importance - a.city.importance,
       );
       for (const { city, sx, sy } of ordered) {
         if (labels.length >= MAX_CITY_LABELS) break;

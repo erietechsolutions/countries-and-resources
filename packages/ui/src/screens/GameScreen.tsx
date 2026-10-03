@@ -325,7 +325,12 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
                       <CitySummary geo={geography} world={state.world} cityId={cityId} />
                     </section>
                   )}
-                  <ProvinceCard geo={geography} world={state.world} provinceId={provinceId} />
+                  <ProvinceCard
+                    geo={geography}
+                    world={state.world}
+                    provinceId={provinceId}
+                    highlightCityId={cityId ?? p.cityId}
+                  />
                   {selectedCountryId && (
                     <CountryCard
                       geo={geography}

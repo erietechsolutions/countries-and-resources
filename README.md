@@ -71,4 +71,4 @@ docs/           Design decisions and the roadmap.
 See [docs/design.md](docs/design.md) for how the pieces fit together and
 [docs/roadmap.md](docs/roadmap.md) for what is built and what comes next.
 
-Map data © [Natural Earth](https://www.naturalearthdata.com) (public domain).
+Map data © [Natural Earth](https://www.naturalearthdata.com) (public domain). Towns © [GeoNames](https://www.geonames.org) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).

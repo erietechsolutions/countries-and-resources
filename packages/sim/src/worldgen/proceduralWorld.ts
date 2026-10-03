@@ -26,6 +26,7 @@ export function generateWorld(geography: WorldGeography, seed: number): WorldSta
   const development = generateDevelopment(geography, seed, countryNeighbors);
   const colors = assignPoliticalColors(geography, seed, countryNeighbors);
 
+  const weights = countryCityWeights(geography);
   const countries: Record<CountryId, CountryState> = {};
   const provinces: ProvinceState[] = new Array(geography.provinces.length);
   const cities: CityState[] = new Array(geography.cities.length);
@@ -51,7 +52,13 @@ export function generateWorld(geography: WorldGeography, seed: number): WorldSta
         habitableArea < 2000
           ? rng.float(300, 4000)
           : clamp(Math.exp(rng.normal(Math.log(65), 0.75)) * sizeDamping, 2, 1000);
-      country.population = Math.max(1_000, Math.round(habitableArea * density));
+      const byArea = Math.round(habitableArea * density);
+      // Countries full of large settlements can't be nearly empty: their towns set a floor.
+      const bySettlements = Math.round(
+        // Map city sizes are metro-wide figures, often repeated for suburbs: discount them.
+        (((weights.get(geoCountry.id) ?? 0) * 0.45) / urbanShareOf(country)) * rng.float(0.7, 1.3),
+      );
+      country.population = Math.max(1_000, byArea, bySettlements);
     }
 
     generateProvinces(geography, geoProvinces, provinceBiomes, country, seed, provinces);
@@ -62,16 +69,10 @@ export function generateWorld(geography: WorldGeography, seed: number): WorldSta
     );
   }
 
-  const citiesByProvince = new Map<number, GeoCity[]>();
-  for (const c of geography.cities) {
-    const list = citiesByProvince.get(c.provinceId) ?? [];
-    list.push(c);
-    citiesByProvince.set(c.provinceId, list);
-  }
   for (const geoCity of geography.cities) {
-    const siblings = citiesByProvince.get(geoCity.provinceId)!;
-    cities[geoCity.id] = generateCity(geoCity, siblings, countries, provinces, seed);
+    cities[geoCity.id] = generateCity(geoCity, weights, countries, seed);
   }
+  fitPopulationToCities(geography, countries, provinces, cities, "add");
 
   return {
     geographyId: geography.id,
@@ -455,7 +456,7 @@ function generateProvinces(
   }
   const weights = geoProvinces.map((p) => {
     const land = (p.areaKm2 * HABITABILITY[biomes[p.id]!]) ** 0.6;
-    return land / 100 + (cityWeight.get(p.id) ?? 0) * 3 + 0.01;
+    return land / 100 + (cityWeight.get(p.id) ?? 0) * 0.3 + 0.01;
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   const baseUrbanization = 0.25 + country.development * 0.55;
@@ -467,7 +468,8 @@ function generateProvinces(
     const urbanization = clamp(baseUrbanization + urbanBoost + rng.normal(0, 0.08), 0.02, 0.98);
     out[p.id] = {
       id: p.id,
-      population: Math.round(country.population * share),
+      // Rural population only; city populations are added once cities exist.
+      population: Math.round(country.population * (1 - urbanShareOf(country)) * share),
       gdpPerCapita: Math.round(
         country.gdpPerCapita * (0.65 + urbanization * 0.7) * rng.float(0.85, 1.15),
       ),
@@ -482,23 +484,99 @@ function generateProvinces(
 // ---------------------------------------------------------------------------------------------
 // Cities
 
-function generateCity(
-  geoCity: GeoCity,
-  siblings: GeoCity[],
+/**
+ * Generates economic data for cities a world doesn't have yet, e.g. towns added to the map after a
+ * save was made. Values are scaled by the economy's price and wage changes since the game began.
+ */
+export function generateMissingCities(
+  geography: WorldGeography,
+  world: WorldState,
+  seed: number,
+): number {
+  const missing = geography.cities.filter((c) => !world.cities[c.id]);
+  if (missing.length === 0) return 0;
+  const weights = countryCityWeights(geography);
+  for (const geoCity of missing) {
+    const city = generateCity(geoCity, weights, world.countries, seed);
+    const e = world.countries[geoCity.countryId]?.economy;
+    if (e) {
+      city.medianWageCents = Math.round(city.medianWageCents * e.wageIndex);
+      city.rentCents = Math.round(city.rentCents * e.priceIndex);
+      city.livingCostCents = Math.round(city.livingCostCents * e.priceIndex);
+    }
+    world.cities[geoCity.id] = city;
+  }
+  fitPopulationToCities(geography, world.countries, world.provinces, world.cities, "atLeast");
+  return missing.length;
+}
+
+/** Share of a country's people living in its named cities and towns. */
+const urbanShareOf = (country: CountryState) => (0.25 + country.development * 0.55) * 0.7;
+
+const cityWeight = (c: GeoCity) => 10 ** c.importance * (c.capital === 2 ? 1.5 : 1);
+
+/** Sum of settlement weights per country, used to share out each country's urban population. */
+function countryCityWeights(geography: WorldGeography): Map<CountryId, number> {
+  const totals = new Map<CountryId, number>();
+  for (const c of geography.cities)
+    totals.set(c.countryId, (totals.get(c.countryId) ?? 0) + cityWeight(c));
+  return totals;
+}
+
+/**
+ * Puts each region's city dwellers into its population and recomputes country totals.
+ * "add": regions start with rural population only (new worlds). "atLeast": regions are raised
+ * just enough to hold their cities (older saves gaining new towns).
+ */
+function fitPopulationToCities(
+  geography: WorldGeography,
   countries: Record<CountryId, CountryState>,
   provinces: ProvinceState[],
+  cities: CityState[],
+  mode: "add" | "atLeast",
+): void {
+  const urban = new Map<number, number>();
+  for (const c of geography.cities) {
+    urban.set(c.provinceId, (urban.get(c.provinceId) ?? 0) + (cities[c.id]?.population ?? 0));
+  }
+  for (const [provinceId, people] of urban) {
+    const province = provinces[provinceId];
+    if (!province) continue;
+    if (mode === "add") {
+      province.population += people;
+    } else {
+      const needed = Math.ceil(people / Math.max(0.35, province.urbanization));
+      if (province.population < needed) province.population = needed;
+    }
+  }
+  for (const geoCountry of geography.countries) {
+    const country = countries[geoCountry.id];
+    if (!country || country.population === 0) continue;
+    country.population = geoCountry.provinceIds.reduce(
+      (sum, id) => sum + (provinces[id]?.population ?? 0),
+      0,
+    );
+  }
+}
+
+function generateCity(
+  geoCity: GeoCity,
+  weights: Map<CountryId, number>,
+  countries: Record<CountryId, CountryState>,
   seed: number,
 ): CityState {
   const cityId = geoCity.id;
   const rng = Rng.fromKey(seed, `city:${cityId}`);
   const country = countries[geoCity.countryId]!;
-  const province = provinces[geoCity.provinceId]!;
 
-  const weightOf = (c: GeoCity) => 10 ** c.importance * (c.capital === 2 ? 1.5 : 1);
-  const share = weightOf(geoCity) / siblings.reduce((s, c) => s + weightOf(c), 0);
-  // Named cities hold most, not all, of the urban population; the rest live in small towns.
-  const urbanPopulation = province.population * province.urbanization * 0.65;
-  let population = Math.max(300, Math.round(urbanPopulation * share * rng.float(0.85, 1.15)));
+  // A country's urban population is shared among its settlements by their relative size, so a
+  // big city stays big even when it sits in a tiny region.
+  const urbanShare = urbanShareOf(country);
+  const share = cityWeight(geoCity) / (weights.get(geoCity.countryId) ?? cityWeight(geoCity));
+  let population = Math.max(
+    300,
+    Math.round(country.population * urbanShare * share * rng.float(0.85, 1.15)),
+  );
   // Soft cap so no city grows far beyond the largest real-world metro areas.
   if (population > 20_000_000)
     population = Math.round(20_000_000 + (population - 20_000_000) * 0.3);

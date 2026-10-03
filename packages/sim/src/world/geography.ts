@@ -59,6 +59,11 @@ export interface GeoCity {
    * Used only as a weight by world generators; real populations are not used in Economic modes.
    */
   importance: number;
+  /**
+   * Smaller towns (20,000+ people) from the extended dataset. They always exist in the world, but
+   * the map and location lists only show them when the player turns on the "smaller towns" setting.
+   */
+  minor?: true;
 }
 
 export interface GeoBorders {

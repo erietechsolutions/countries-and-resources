@@ -57,7 +57,9 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
             </button>
           )}
         </nav>
-        <p className="version muted small">Version 0.1 · Phase 1 preview</p>
+        <p className="version muted small">
+          Version 0.2 · Map data: Natural Earth · Towns: GeoNames (CC BY 4.0)
+        </p>
       </main>
     </div>
   );

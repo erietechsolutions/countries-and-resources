@@ -1,6 +1,7 @@
 import type { WorldGeography } from "../world/geography";
 import { ensureCompanies } from "../work/companies";
 import { initCountryEconomy } from "../worldgen/economyInit";
+import { generateMissingCities } from "../worldgen/proceduralWorld";
 import { toDateParts } from "./calendar";
 import { commandHandlers, type Command, type CommandHandler, type CommandResult } from "./commands";
 import { EventBus, type AlertLevel, type LogCategory } from "./events";
@@ -106,6 +107,7 @@ export class Game implements GameContext {
 
 /** Fills in world data that older saves lack and that needs the map to compute. */
 function upgradeWorld(game: Game): void {
+  generateMissingCities(game.geography, game.state.world, game.state.config.worldSeed);
   for (const geoCountry of game.geography.countries) {
     const country = game.state.world.countries[geoCountry.id];
     if (!country || country.economy) continue;

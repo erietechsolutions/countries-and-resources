@@ -32,6 +32,7 @@ import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards"
 import { OptionCards } from "../components/OptionCards";
 import { geographyIdFor, loadGeography } from "../data/geography";
 import { MapView, type FocusRequest } from "../map/MapView";
+import { useSettings } from "../storage/settings";
 
 type Step = "mode" | "start" | "location" | "character" | "review";
 const STEPS: { id: Step; label: string }[] = [
@@ -364,6 +365,7 @@ function LocationStep({ geography, world, cityId, onCity }: LocationProps) {
   const [focus, setFocus] = useState<FocusRequest | null>(
     initialCity ? { x: initialCity.x, y: initialCity.y, zoom: 8, key: 0 } : null,
   );
+  const { showTowns } = useSettings();
   const habitable = useMemo(
     () => new Set(geography.countries.filter((c) => c.habitable).map((c) => c.id)),
     [geography],
@@ -371,13 +373,13 @@ function LocationStep({ geography, world, cityId, onCity }: LocationProps) {
   const searchIndex = useMemo(
     () => ({
       cities: geography.cities
-        .filter((c) => habitable.has(c.countryId))
+        .filter((c) => habitable.has(c.countryId) && (showTowns || !c.minor))
         .map((c) => ({ c, key: normalize(c.name) })),
       countries: geography.countries
         .filter((c) => c.habitable)
         .map((c) => ({ c, key: normalize(c.name) })),
     }),
-    [geography, habitable],
+    [geography, habitable, showTowns],
   );
 
   const results = useMemo(() => {

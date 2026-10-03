@@ -5,6 +5,8 @@ export interface Settings {
   autosave: boolean;
   showProvinceBorders: boolean;
   showCityLabels: boolean;
+  /** Show the ~18,000 smaller towns (20,000+ people) on the map and in location lists. */
+  showTowns: boolean;
   /** Pause when the current activity ends and the character is idle. */
   pauseOnActivityEnd: boolean;
   /** Pause when something bad happens (fired, robbed, evicted...). */
@@ -17,6 +19,7 @@ const DEFAULTS: Settings = {
   autosave: true,
   showProvinceBorders: true,
   showCityLabels: true,
+  showTowns: true,
   pauseOnActivityEnd: true,
   pauseOnBadNews: true,
   tutorialDone: false,
