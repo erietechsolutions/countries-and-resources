@@ -1,4 +1,5 @@
 import type { WorldGeography } from "../world/geography";
+import { ensurePolitics } from "../politics/government";
 import { ensureCompanies } from "../work/companies";
 import { normalizeState } from "./normalize";
 import { initCountryEconomy } from "../worldgen/economyInit";
@@ -45,6 +46,7 @@ export class Game implements GameContext {
     upgradeWorld(this);
     // Employers are generated the first time the player lives in a city.
     ensureCompanies(this, state.player.cityId);
+    ensurePolitics(this);
     this.state.rngState = this.rng.state;
   }
 

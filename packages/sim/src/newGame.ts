@@ -9,6 +9,7 @@ import type { GameState } from "./core/state";
 import { MODES, validateConfig, type GameConfig } from "./modes/modes";
 import type { WorldGeography } from "./world/geography";
 import { generateFamily } from "./life/family";
+import { emptyPolitics } from "./politics/types";
 import { formatMoney } from "./world/format";
 import type { WorldState } from "./world/types";
 import { generateWorld } from "./worldgen/proceduralWorld";
@@ -80,6 +81,7 @@ export function createNewGame(
     people: [],
     nextPersonId: 1,
     businesses: [],
+    politics: emptyPolitics(),
     nextBusinessId: 1,
     log: [],
   };

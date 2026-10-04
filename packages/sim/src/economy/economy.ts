@@ -6,6 +6,7 @@ import { formatPercent } from "../world/format";
 import type { CountryId } from "../world/geography";
 import type { CountryState, EconomicPhase, Good } from "../world/types";
 import { createCompany, PHASE_DEMAND, refreshOpenings } from "../work/companies";
+import { businessRegulation, localPolicy } from "../politics/policies";
 import { companyOfJob } from "../work/jobs";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -161,7 +162,11 @@ function updateCities(ctx: GameContext, changes: Map<CountryId, MonthlyChange>):
     if (!change || !city) return;
     const oldWage = city.medianWageCents;
     city.medianWageCents = Math.max(1, Math.round(city.medianWageCents * change.wage));
-    city.rentCents = Math.max(100, Math.round(city.rentCents * change.housing));
+    // Rent control slows rent increases.
+    const control = localPolicy(ctx, id, "rentControl");
+    const housing =
+      change.housing > 1 ? 1 + (change.housing - 1) * (1 - 0.35 * control) : change.housing;
+    city.rentCents = Math.max(100, Math.round(city.rentCents * housing));
     city.livingCostCents = Math.max(100, Math.round(city.livingCostCents * change.food));
     // The player's pay keeps pace with local wages.
     if (p.job && id === p.cityId && change.wage > 1) {
@@ -185,7 +190,14 @@ function updateCompanies(ctx: GameContext): void {
   for (const company of [...world.companies]) {
     const country = world.countries[ctx.geography.cities[company.cityId]!.countryId]!;
     const demand = PHASE_DEMAND[country.economy.phase];
-    company.health = clamp(company.health + (demand - 0.72) * 12 + rng.normal(0, 4), -10, 100);
+    company.health = clamp(
+      company.health +
+        (demand - 0.72) * 12 -
+        (businessRegulation(country) - 0.5) * 3 +
+        rng.normal(0, 4),
+      -10,
+      100,
+    );
     company.employees = Math.max(1, Math.round(company.employees * (1 + (demand - 0.8) * 0.05)));
     refreshOpenings(company, demand, rng);
 

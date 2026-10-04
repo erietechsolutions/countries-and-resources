@@ -29,6 +29,7 @@ import { LifePanel } from "../panels/LifePanel";
 import { MoneyPanel } from "../panels/MoneyPanel";
 import { MovePanel } from "../panels/MovePanel";
 import { PeoplePanel } from "../panels/PeoplePanel";
+import { PoliticsPanel } from "../panels/PoliticsPanel";
 import { WorkPanel } from "../panels/WorkPanel";
 import { useSettings } from "../storage/settings";
 import { AUTOSAVE_ID, newSaveId, writeSave } from "../storage/saves";
@@ -44,13 +45,14 @@ interface Props {
 }
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
-type Tab = "life" | "work" | "business" | "people" | "money" | "home" | "region";
+type Tab = "life" | "work" | "business" | "people" | "politics" | "money" | "home" | "region";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "life", label: "Life" },
   { id: "work", label: "Work" },
   { id: "business", label: "Business" },
   { id: "people", label: "People" },
+  { id: "politics", label: "Politics" },
   { id: "money", label: "Money" },
   { id: "home", label: "Home" },
   { id: "region", label: "Region" },
@@ -310,6 +312,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "work" && <WorkPanel />}
             {tab === "people" && <PeoplePanel />}
             {tab === "business" && <BusinessPanel />}
+            {tab === "politics" && <PoliticsPanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
             {tab === "region" && (

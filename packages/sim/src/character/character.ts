@@ -21,6 +21,7 @@ import {
   type Reputation,
 } from "../social/types";
 import type { Residency, VisaApplication, VisaGrant } from "../life/moving";
+import { emptyPlayerPolitics, type PlayerPolitics } from "../politics/types";
 import { emptySkills, type SkillXp } from "../work/skills";
 
 export type Gender = "male" | "female" | "nonbinary";
@@ -80,6 +81,7 @@ export interface Character {
   /** Approved visas not yet used to move. */
   visas: VisaGrant[];
   visaApplication: VisaApplication | null;
+  politics: PlayerPolitics;
 }
 
 export const NAME_LIMIT = 30;
@@ -154,6 +156,7 @@ export function createPlayerCharacter(
     },
     visas: [],
     visaApplication: null,
+    politics: emptyPlayerPolitics(),
   };
 }
 

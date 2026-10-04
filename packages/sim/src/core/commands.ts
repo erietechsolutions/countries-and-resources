@@ -17,6 +17,9 @@ import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
 import { moveBackHome, rentUnit } from "../life/housing";
 import type { ItemId } from "../life/items";
+import { castVote, proposeBill, signBill } from "../politics/bills";
+import { fileCandidacy, spendOnAds, withdrawCandidacy } from "../politics/elections";
+import { foundParty, joinParty, leaveParty } from "../politics/party";
 import { applyForVisa, moveTo, naturalize, type VisaType } from "../life/moving";
 import { buyItem, dropCourse, enroll, sellItem } from "../life/shopping";
 import type { UnitType } from "../life/types";
@@ -53,6 +56,15 @@ export type Command =
   | { type: "move.to"; cityId: number; illegal?: boolean }
   | { type: "immigration.apply"; countryId: string; visa: VisaType }
   | { type: "immigration.naturalize" }
+  | { type: "politics.join"; partyId: string }
+  | { type: "politics.leave" }
+  | { type: "politics.found"; name: string; preset: string }
+  | { type: "politics.file"; electionId: string }
+  | { type: "politics.withdraw" }
+  | { type: "politics.ads"; amountCents: number }
+  | { type: "politics.propose"; officeId: string; policyId: string; direction: 1 | -1 }
+  | { type: "politics.vote"; billId: string; vote: "yes" | "no" }
+  | { type: "politics.sign"; billId: string; sign: boolean }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -107,6 +119,16 @@ export const commandHandlers: CommandHandlers = {
   "move.to": (ctx, cmd) => alive(ctx) ?? moveTo(ctx, cmd.cityId, cmd.illegal ?? false),
   "immigration.apply": (ctx, cmd) => alive(ctx) ?? applyForVisa(ctx, cmd.countryId, cmd.visa),
   "immigration.naturalize": (ctx) => alive(ctx) ?? naturalize(ctx),
+  "politics.join": (ctx, cmd) => alive(ctx) ?? joinParty(ctx, cmd.partyId),
+  "politics.leave": (ctx) => leaveParty(ctx),
+  "politics.found": (ctx, cmd) => alive(ctx) ?? foundParty(ctx, cmd.name, cmd.preset),
+  "politics.file": (ctx, cmd) => alive(ctx) ?? fileCandidacy(ctx, cmd.electionId),
+  "politics.withdraw": (ctx) => withdrawCandidacy(ctx),
+  "politics.ads": (ctx, cmd) => spendOnAds(ctx, cmd.amountCents),
+  "politics.propose": (ctx, cmd) =>
+    alive(ctx) ?? proposeBill(ctx, cmd.officeId, cmd.policyId, cmd.direction),
+  "politics.vote": (ctx, cmd) => castVote(ctx, cmd.billId, cmd.vote),
+  "politics.sign": (ctx, cmd) => signBill(ctx, cmd.billId, cmd.sign),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

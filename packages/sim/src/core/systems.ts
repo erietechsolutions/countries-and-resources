@@ -5,6 +5,7 @@ import { familySystem } from "../life/family";
 import { housingSystem } from "../life/housing";
 import { immigrationSystem } from "../life/moving";
 import { businessSystem } from "../business/business";
+import { politicsSystem } from "../politics/system";
 import { socialSystem } from "../social/social";
 import { jobsSystem } from "../work/jobs";
 import { ageInYears, type DateParts, toDateParts } from "./calendar";
@@ -53,6 +54,7 @@ export const defaultSystems: readonly System[] = [
   immigrationSystem,
   socialSystem,
   businessSystem,
+  politicsSystem,
   economySystem,
   birthdaySystem,
   newYearSystem,

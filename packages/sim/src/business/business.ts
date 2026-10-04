@@ -3,6 +3,7 @@ import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { cityCosts, countryOf } from "../economy/costs";
 import { transact } from "../finance/finance";
+import { localPolicy } from "../politics/policies";
 import { adjustReputation } from "../social/social";
 import { formatMoney } from "../world/format";
 import type { CityId } from "../world/geography";
@@ -479,7 +480,10 @@ export function runBusinessMonth(ctx: GameContext, b: Business, commit: boolean)
   const materials = revenue * econ.materials;
   const interest = (b.debtCents * 0.1) / 12;
   const preTax = revenue - wages - rent - materials - b.marketingCents - interest;
-  const tax = Math.max(0, preTax) * countryOf(ctx, b.locations[0]!.cityId).taxes.corporate;
+  const tax =
+    Math.max(0, preTax) *
+    (countryOf(ctx, b.locations[0]!.cityId).taxes.corporate +
+      localPolicy(ctx, b.locations[0]!.cityId, "businessTax"));
   const profit = Math.round(preTax - tax);
   const costs = Math.round(revenue - profit);
   const result = {

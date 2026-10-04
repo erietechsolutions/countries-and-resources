@@ -1,6 +1,7 @@
 import { fullName, newDailyFlags, type Character } from "../character/character";
 import { Rng } from "../core/rng";
 import { generateFamily } from "../life/family";
+import { emptyPlayerPolitics } from "../politics/types";
 import { emptyReputation } from "../social/types";
 import { emptySkills } from "../work/skills";
 import type { GameTime } from "../core/calendar";
@@ -93,6 +94,7 @@ function migrateV1toV2(input: unknown): unknown {
     },
     visas: [],
     visaApplication: null,
+    politics: emptyPlayerPolitics(),
   };
   state.player = player;
   state.family = generateFamily(

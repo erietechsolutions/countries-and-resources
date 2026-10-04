@@ -1,4 +1,5 @@
 import { businessById } from "../business/business";
+import { localPolicy } from "../politics/policies";
 import { canWorkLegally } from "./moving";
 import { newDailyFlags } from "../character/character";
 import { startOfDay, toDateParts } from "../core/calendar";
@@ -416,7 +417,10 @@ export const ACTIVITIES: ActivityDef[] = [
     onFinish: (ctx) => {
       const p = ctx.state.player;
       const services = countryOf(ctx, p.cityId).socialServices;
-      if (ctx.rng.chance(0.2 + services * 0.75)) {
+      const localFunding = localPolicy(ctx, p.cityId, "shelterFunding") - 0.3;
+      if (
+        ctx.rng.chance(Math.max(0.05, Math.min(0.97, 0.2 + services * 0.75 + localFunding * 0.4)))
+      ) {
         const tomorrow8 = startOfDay(ctx.state.time) + 24 + 8;
         p.shelterBedUntil = tomorrow8;
         p.cooldowns.shelterAddress = ctx.state.time + 14 * 24;
@@ -652,6 +656,70 @@ export const ACTIVITIES: ActivityDef[] = [
       if (n.energy < 20 || n.hygiene < 20 || n.food < 15) job.performance -= 0.6;
       else if (n.energy > 40 && n.hygiene > 40 && n.happiness > 30) job.performance += 0.2;
       job.performance = Math.max(0, Math.min(100, job.performance));
+    },
+  },
+  {
+    id: "partyWork",
+    label: "Volunteer for your party",
+    category: "growth",
+    description: "Knock on doors, staff events and make calls. Raises your standing in the party.",
+    interruptible: true,
+    hours: () => 3,
+    unavailable: all(during(9, 21), (ctx) =>
+      ctx.state.player.politics.partyId ? null : "Join a party first.",
+    ),
+    effects: () => ({ energy: -1, happiness: 0.5 }),
+    onFinish: (ctx) => {
+      ctx.state.player.politics.standing += 3;
+      adjustReputation(ctx, "activists", 0.5);
+      addXp(ctx, { sales: 0.3, management: 0.2 });
+    },
+  },
+  {
+    id: "campaign",
+    label: "Campaign",
+    category: "growth",
+    description: "Rallies, debates and handshakes. Every hour wins you votes.",
+    interruptible: true,
+    hours: () => 4,
+    unavailable: all(during(8, 22), (ctx) =>
+      ctx.state.player.politics.candidacy ? null : "You're not running for office.",
+    ),
+    effects: () => ({ energy: -2, hygiene: -1 }),
+    onHour: (ctx) => {
+      const c = ctx.state.player.politics.candidacy;
+      if (c) c.effort += 1;
+      addXp(ctx, { sales: 0.3, service: 0.2 });
+    },
+    onFinish: (ctx) => {
+      adjustReputation(ctx, "fame", 0.3);
+      ctx.state.player.politics.standing += 1;
+    },
+  },
+  {
+    id: "fundraise",
+    label: "Fundraise",
+    category: "growth",
+    description: "Ask supporters and donors for campaign money.",
+    interruptible: true,
+    hours: () => 3,
+    unavailable: all(during(9, 21), (ctx) =>
+      ctx.state.player.politics.candidacy ? null : "You're not running for office.",
+    ),
+    effects: () => ({ energy: -1 }),
+    onFinish: (ctx) => {
+      const p = ctx.state.player;
+      const c = p.politics.candidacy;
+      if (!c) return;
+      const wage = cityCosts(ctx, p.cityId).medianWageCents;
+      const pull =
+        4 +
+        p.reputation.fame / 5 +
+        Math.max(0, p.reputation.business) / 8 +
+        (p.politics.partyId ? 3 : 0);
+      const raised = Math.round(wage * pull * ctx.rng.float(0.5, 1.5));
+      c.fundsCents += raised;
+      ctx.alert("good", `You raised ${formatMoney(raised, true)} for your campaign.`, "politics");
     },
   },
   {

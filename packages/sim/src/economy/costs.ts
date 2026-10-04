@@ -61,10 +61,24 @@ export function cityCosts(view: WorldView, cityId: CityId): CityCosts {
     fastFoodCents: Math.round(meal * 3.2),
     showerCents: Math.round(meal * 3),
     medianWageCents: wage,
-    minimumWageCents: countryOf(view, cityId).minimumWageCents,
+    // A local minimum wage (set by city or regional government) can exceed the national one.
+    minimumWageCents: Math.max(
+      countryOf(view, cityId).minimumWageCents,
+      Math.round(wage * localMinimumWage(view, cityId)),
+    ),
     rentCents: (unit) =>
       Math.max(100, Math.round((city.rentCents * unitType(unit).rentFactor) / 100) * 100),
     itemCents: (item) => Math.round(wage * itemById(item).priceWageMultiple),
     tuitionCents: (course) => Math.round(wage * (courseById(course)?.tuitionWageMultiple ?? 0)),
   };
+}
+
+function localMinimumWage(view: WorldView, cityId: CityId): number {
+  const all = view.state.politics?.localPolicies;
+  if (!all) return 0;
+  const province = view.geography.cities[cityId]?.provinceId;
+  return Math.max(
+    all[`city:${cityId}`]?.localMinimumWage ?? 0,
+    all[`region:${province}`]?.localMinimumWage ?? 0,
+  );
 }

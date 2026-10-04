@@ -1,3 +1,4 @@
+import { emptyPlayerPolitics, emptyPolitics } from "../politics/types";
 import { emptyReputation } from "../social/types";
 import type { GameState } from "./state";
 
@@ -11,6 +12,7 @@ export function normalizeState(state: GameState): void {
   s.nextPersonId ??= 1;
   s.businesses ??= [];
   s.nextBusinessId ??= 1;
+  s.politics ??= emptyPolitics();
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };
@@ -23,4 +25,5 @@ export function normalizeState(state: GameState): void {
   };
   p.visas ??= [];
   p.visaApplication ??= null;
+  p.politics ??= emptyPlayerPolitics();
 }

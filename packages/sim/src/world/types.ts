@@ -144,6 +144,13 @@ export interface CountryState {
   socialServices: number;
   /** 0–1: how welcoming immigration policy is (derived from the country when not set). */
   immigrationOpenness?: number;
+  /** 0–1: police and courts (defaults from development). */
+  ruleOfLaw?: number;
+  /** 0–1: rules on business (default 0.5). */
+  businessRegulation?: number;
+  budget?: { debtCents: number; revenueCents: number; spendingCents: number };
+  /** Next national election (countries without detailed offices). */
+  nextElection?: number;
 }
 
 export type Biome =
