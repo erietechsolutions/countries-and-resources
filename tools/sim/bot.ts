@@ -6,6 +6,9 @@ import {
   activityBlocker,
   activityById,
   cityCosts,
+  electionFor,
+  filingBlocker,
+  officesFor,
   rentalListings,
   toDateParts,
   type Command,
@@ -97,7 +100,39 @@ export function botStep(game: Game): void {
     }
   }
   if (p.housing.kind === "parents" && !p.daily.chores && tryStart(game, "chores")) return;
+  if (politicalAmbition(game)) return;
   tryStart(game, "wait", 1);
+}
+
+/** Optional political career: join a party, volunteer, run for anything open, campaign hard. */
+export const botOptions = { politics: false };
+
+function politicalAmbition(game: Game): boolean {
+  if (!botOptions.politics) return false;
+  const p = game.state.player;
+  const country = game.state.world.countries[game.geography.cities[p.cityId]!.countryId]!;
+  if (!p.politics.partyId) {
+    const party = [...country.parties]
+      .filter((x) => x.legal)
+      .sort((a, b) => b.popularity - a.popularity)[0];
+    if (party) tryCommand(game, { type: "politics.join", partyId: party.id });
+  }
+  if (!p.politics.candidacy) {
+    for (const office of officesFor(game, p.cityId)) {
+      const e = electionFor(game, office);
+      if (e && !filingBlocker(game, e) && game.time <= e.filingCloses) {
+        tryCommand(game, { type: "politics.file", electionId: e.id });
+        break;
+      }
+    }
+  }
+  if (p.politics.candidacy) {
+    const c = p.politics.candidacy;
+    if (c.fundsCents > 0) tryCommand(game, { type: "politics.ads", amountCents: c.fundsCents });
+    return tryStart(game, c.effort < 150 ? "campaign" : "fundraise");
+  }
+  if (tryStart(game, "partyWork")) return true;
+  return !p.job && tryStart(game, "volunteer");
 }
 
 export function playBot(game: Game, days: number): BotStats {

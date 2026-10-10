@@ -672,7 +672,13 @@ export const ACTIVITIES: ActivityDef[] = [
     ),
     effects: () => ({ energy: -1, happiness: 0.5 }),
     onFinish: (ctx) => {
-      ctx.state.player.politics.standing += 3;
+      // Party bosses notice steady commitment, not marathon days: standing counts once a day.
+      const p = ctx.state.player;
+      const today = startOfDay(ctx.state.time);
+      if (p.cooldowns.partyWork !== today) {
+        p.cooldowns.partyWork = today;
+        p.politics.standing += 3;
+      }
       adjustReputation(ctx, "activists", 0.5);
       addXp(ctx, { sales: 0.3, management: 0.2 });
     },
@@ -694,7 +700,7 @@ export const ACTIVITIES: ActivityDef[] = [
       addXp(ctx, { sales: 0.3, service: 0.2 });
     },
     onFinish: (ctx) => {
-      adjustReputation(ctx, "fame", 0.3);
+      adjustReputation(ctx, "fame", 0.08);
       ctx.state.player.politics.standing += 1;
     },
   },

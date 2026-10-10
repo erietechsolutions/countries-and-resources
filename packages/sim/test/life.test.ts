@@ -355,7 +355,7 @@ describe("save migration", () => {
       state: v1,
     };
     const upgraded = parseSave(JSON.stringify(file));
-    expect(upgraded.version).toBe(2);
+    expect(upgraded.version).toBe(3);
     const loaded = new Game(upgraded.state, geo);
     expect(loaded.state.player.housing).toEqual({ kind: "homeless" });
     expect(loaded.state.player.needs.health).toBe(85);
@@ -386,5 +386,44 @@ describe("map updates", () => {
     const loaded = new Game(state, geo);
     expect(loaded.state.world.cities).toHaveLength(geo.cities.length);
     expect(loaded.state.world.cities[2]!.rentCents).toBeGreaterThan(0);
+  });
+});
+
+describe("save format v2", () => {
+  it("loads a Phase 2 save into the current game", () => {
+    const game = newGame();
+    const s = JSON.parse(JSON.stringify(game.state));
+    for (const key of [
+      "people",
+      "nextPersonId",
+      "businesses",
+      "nextBusinessId",
+      "politics",
+      "story",
+      "rivals",
+    ])
+      delete s[key];
+    for (const key of [
+      "relationships",
+      "reputation",
+      "pregnancy",
+      "residency",
+      "visas",
+      "visaApplication",
+      "politics",
+      "legal",
+    ])
+      delete s.player[key];
+    const file = {
+      format: "countries-and-resources-save",
+      version: 2,
+      savedAt: "2026-10-03T00:00:00Z",
+      summary: {},
+      state: s,
+    };
+    const loaded = new Game(parseSave(JSON.stringify(file)).state, geo);
+    expect(loaded.state.player.legal.record).toEqual([]);
+    expect(loaded.state.politics.offices.length).toBeGreaterThan(0);
+    loaded.tick(24 * 40);
   });
 });

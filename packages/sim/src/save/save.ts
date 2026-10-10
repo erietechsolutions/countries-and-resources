@@ -12,7 +12,7 @@ import type { WorldGeography } from "../world/geography";
 
 export const SAVE_FORMAT = "countries-and-resources-save";
 /** Bump when GameState changes shape, and add a migration from the previous version. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** Shown in the load-game list without parsing the whole state. */
 export interface SaveSummary {
@@ -42,6 +42,8 @@ export class SaveError extends Error {
 /** Migrations upgrade a save from version N to N+1. */
 const MIGRATIONS: Record<number, (state: unknown) => unknown> = {
   1: migrateV1toV2,
+  // Version 3 (Phases 3–4) only added data; Game fills in the defaults when the save loads.
+  2: (state) => state,
 };
 
 /**

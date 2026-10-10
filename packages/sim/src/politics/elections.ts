@@ -168,17 +168,19 @@ export function playerAppeal(ctx: GameContext, office: Office): number {
       Math.max(0, rep.underworld) * 0.6) /
     100;
   const scale = office.level === "city" ? 1 : office.level === "region" ? 0.7 : 0.5;
-  const effort = c ? Math.min(0.6, c.effort / 120) * scale : 0;
-  const ads = c ? Math.min(0.5, Math.log10(1 + c.spentCents / (wage * 40)) * 0.25) * scale : 0;
+  const effort = c ? Math.min(0.35, c.effort / 200) * scale : 0;
+  const ads = c ? Math.min(0.3, Math.log10(1 + c.spentCents / (wage * 40)) * 0.15) * scale : 0;
   const incumbency = office.holders.includes("player") ? (p.politics.approval - 50) / 100 : 0;
   const record = p.legal.record.length * 0.15;
-  return reputation + rep.fame / 120 + effort + ads + incumbency - record;
+  const raw = reputation + rep.fame / 250 + effort + ads + incumbency - record;
+  // Diminishing returns: no amount of money and effort guarantees a win.
+  return raw > 0 ? 0.45 * Math.tanh(raw / 0.45) : raw;
 }
 
-function candidateScore(ctx: GameContext, office: Office, c: Candidate): number {
+function candidateScore(ctx: GameContext, office: Office, c: Candidate, slate = 1): number {
   const country = countryOf(ctx, office);
   const party = c.partyId ? country.parties.find((p) => p.id === c.partyId) : undefined;
-  const base = party ? localStrength(party, office) : 0.04;
+  const base = (party ? localStrength(party, office) : 0.04) / slate;
   const appeal =
     c.id === "player" ? playerAppeal(ctx, office) : c.appeal + rivalCandidateAppeal(ctx, c.id);
   return base * Math.max(0.2, 1 + appeal) * (c.incumbent ? 1.12 : 1);
@@ -193,7 +195,14 @@ export function pollShare(ctx: GameContext, election: Election): number {
   const withPlayer = candidates.some((c) => c.id === "player")
     ? candidates
     : [...candidates, playerCandidate(ctx, office)];
-  const scores = withPlayer.map((c) => candidateScore(ctx, office, c));
+  const scores = withPlayer.map((c) =>
+    candidateScore(
+      ctx,
+      office,
+      c,
+      c.partyId ? withPlayer.filter((o) => o.partyId === c.partyId).length : 1,
+    ),
+  );
   const total = scores.reduce((a, b) => a + b, 0) || 1;
   return scores[withPlayer.findIndex((c) => c.id === "player")]! / total;
 }
@@ -214,7 +223,8 @@ function nominees(ctx: GameContext, office: Office, commit: boolean): Candidate[
     .filter((p) => p.legal)
     .sort((a, b) => b.popularity - a.popularity);
   const playerPartyId = ctx.state.player.politics.candidacy && playerParty(ctx)?.id;
-  const perParty = office.seats === 1 ? 1 : Math.max(1, Math.ceil(office.seats / 3));
+  // Open lists: in multi-seat races a party fields up to a full slate and its vote is split among them.
+  const perParty = office.seats === 1 ? 1 : office.seats;
   const list: Candidate[] = [];
   for (const party of parties.slice(0, office.seats === 1 ? 3 : 5)) {
     for (let i = 0; i < perParty; i++) {
@@ -232,7 +242,7 @@ function nominees(ctx: GameContext, office: Office, commit: boolean): Candidate[
       list.push({
         id,
         partyId: party.id,
-        appeal: commit ? ctx.rng.float(-0.2, 0.35) : 0.05,
+        appeal: commit ? ctx.rng.float(-0.05, 0.6) : 0.15,
         incumbent: incumbentIdx >= 0,
       });
     }
@@ -240,11 +250,51 @@ function nominees(ctx: GameContext, office: Office, commit: boolean): Candidate[
   return list;
 }
 
+/** Primary: for single-seat offices, party members compete for the nomination. */
+function wonPrimary(ctx: GameContext, office: Office): boolean {
+  const pol = ctx.state.player.politics;
+  if (office.seats > 1 || !pol.partyId || office.kind === "legislator") return true;
+  const incumbent = office.holders.includes("player");
+  const chance = incumbent
+    ? 0.9
+    : Math.max(
+        0.15,
+        Math.min(0.9, 0.3 + pol.rank * 0.08 + pol.standing / 500 + playerAppeal(ctx, office) * 0.4),
+      );
+  if (ctx.rng.chance(chance)) {
+    ctx.alert(
+      "good",
+      `You won your party's primary for ${office.title}. On to the general election!`,
+      "politics",
+    );
+    return true;
+  }
+  pol.candidacy = null;
+  pol.standing += 3;
+  ctx.alert(
+    "bad",
+    `You lost your party's primary for ${office.title}. Another member will carry the party's banner.`,
+    "politics",
+  );
+  return false;
+}
+
 function closeFiling(ctx: GameContext, election: Election): void {
   if (election.candidates.length > 0) return;
   const office = officeById(ctx, election.officeId)!;
   election.candidates = nominees(ctx, office, true);
-  if (ctx.state.player.politics.candidacy?.electionId === election.id) {
+  if (ctx.state.player.politics.candidacy?.electionId === election.id && !wonPrimary(ctx, office)) {
+    // The player's party picked someone else; that nominee stays on the ballot.
+    const party = playerParty(ctx);
+    if (party && !election.candidates.some((c) => c.partyId === party.id)) {
+      election.candidates.push({
+        id: newPolitician(ctx, ctx.state.player.cityId, party),
+        partyId: party.id,
+        appeal: ctx.rng.float(0, 0.4),
+        incumbent: false,
+      });
+    }
+  } else if (ctx.state.player.politics.candidacy?.electionId === election.id) {
     election.candidates.push(playerCandidate(ctx, office));
     // A political rival takes their party's slot to face the player directly.
     const rival = ctx.state.rivals.find((r) => r.kind === "political");
@@ -316,8 +366,10 @@ function resolveElection(ctx: GameContext, election: Election): void {
         (scores[parties.findIndex((p) => p.id === playerPartyId)] ?? 0) / total,
       );
   } else {
+    const slate = (c: Candidate) =>
+      c.partyId ? election.candidates.filter((o) => o.partyId === c.partyId).length : 1;
     const scores = election.candidates.map(
-      (c) => candidateScore(ctx, office, c) * ctx.rng.float(0.85, 1.15),
+      (c) => candidateScore(ctx, office, c, slate(c)) * ctx.rng.float(0.75, 1.25),
     );
     const total = scores.reduce((a, b) => a + b, 0) || 1;
     const order = election.candidates
@@ -381,8 +433,14 @@ export function setGoverningParty(ctx: GameContext, country: CountryState, party
   const playerLeads =
     pol.partyId === party.id && pol.rank >= 5 && ctx.state.player.citizenship.includes(country.id);
   if (playerLeads) {
-    if (!head.holders.includes("player"))
+    if (!head.holders.includes("player")) {
       ctx.alert("good", `Your party won! You are now ${head.title}.`, "politics");
+      for (const other of ctx.state.politics.offices) {
+        const i = other.holders.indexOf("player");
+        if (other !== head && i >= 0)
+          other.holders[i] = newPolitician(ctx, ctx.state.player.cityId, party);
+      }
+    }
     head.holders = ["player"];
   } else if (changed || head.holders[0] === "player") {
     head.holders = [newPolitician(ctx, ctx.state.player.cityId, party)];
@@ -394,6 +452,13 @@ function reportPlayer(ctx: GameContext, office: Office, won: boolean, share: num
   const p = ctx.state.player;
   p.politics.candidacy = null;
   if (won) {
+    p.politics.electionsWon = (p.politics.electionsWon ?? 0) + 1;
+    // One job at a time: winning a new office means giving up any other.
+    for (const other of ctx.state.politics.offices) {
+      if (other.id === office.id) continue;
+      const i = other.holders.indexOf("player");
+      if (i >= 0) other.holders[i] = newPolitician(ctx, ctx.state.player.cityId, null);
+    }
     p.politics.standing += 20;
     p.politics.approval = 55;
     adjustReputation(ctx, "fame", office.level === "city" ? 4 : office.level === "region" ? 8 : 12);

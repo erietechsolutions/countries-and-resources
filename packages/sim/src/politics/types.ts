@@ -151,6 +151,8 @@ export interface PlayerPolitics {
   approval: number;
   /** Bills the player can still propose this month. */
   proposalsLeft: number;
+  /** Elections the player has won over their career. */
+  electionsWon?: number;
 }
 
 export function emptyPlayerPolitics(): PlayerPolitics {

@@ -30,6 +30,23 @@ function driftPopularity(ctx: GameContext): void {
   }
 }
 
+/** Offices gain elections when a country democratizes, and lose them under autocracy. */
+function syncElectionSchedules(ctx: GameContext): void {
+  for (const office of ctx.state.politics.offices) {
+    const country = ctx.state.world.countries[office.countryId];
+    if (!country) continue;
+    const democratic = isDemocratic(country.government);
+    if (democratic && office.nextElection === null) {
+      office.nextElection = addDays(ctx.state.time, ctx.rng.int(150, 365));
+    } else if (!democratic && office.nextElection !== null) {
+      office.nextElection = null;
+      ctx.state.politics.elections = ctx.state.politics.elections.filter(
+        (e) => e.officeId !== office.id || e.status === "done",
+      );
+    }
+  }
+}
+
 /** Countries without detailed offices still hold national elections now and then. */
 function worldElections(ctx: GameContext): void {
   const setUp = new Set(ctx.state.politics.setUpCountries);
@@ -112,6 +129,7 @@ export const politicsSystem: System = {
       );
       adjustReputation(ctx, "fame", 0.3 * offices.length);
     }
+    syncElectionSchedules(ctx);
     promoteInParty(ctx);
     appointments(ctx);
     npcProposals(ctx);

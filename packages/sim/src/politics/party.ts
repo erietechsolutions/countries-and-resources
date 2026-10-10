@@ -155,12 +155,24 @@ export function promoteInParty(ctx: GameContext): void {
   if (!party || pol.rank >= 5) return;
   const next = pol.rank + 1;
   const months = (ctx.state.time - pol.joinedAt) / (30 * 24);
-  if (pol.standing < RANK_STANDING[next]! || months < next * 2) return;
+  if (pol.standing < RANK_STANDING[next]! || months < next * 3) return;
+  // Senior ranks go to people who have proven they can win, and who the public knows.
+  const p = ctx.state.player;
+  if (next >= 3 && (pol.electionsWon ?? 0) < next - 2) return;
+  if (
+    next === 5 &&
+    (p.reputation.fame < 40 ||
+      !ctx.state.politics.offices.some((o) => o.holders.includes("player") && o.level !== "city") ||
+      (p.cooldowns.leadership ?? 0) > ctx.state.time)
+  )
+    return;
+  // Leadership contests happen at most once a year.
+  if (next === 5) p.cooldowns.leadership = ctx.state.time + 365 * 24;
   // Becoming party leader means winning a leadership contest.
-  if (next === 5 && !ctx.rng.chance(0.35)) {
+  if (next === 5 && !ctx.rng.chance(0.15 + p.reputation.fame / 600)) {
     ctx.alert(
       "info",
-      `You challenged for the leadership of the ${party.name}, but lost. You can try again next month.`,
+      `You challenged for the leadership of the ${party.name}, but lost. You can try again next year.`,
       "politics",
     );
     pol.standing -= 15;
