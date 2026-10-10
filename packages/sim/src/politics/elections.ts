@@ -1,6 +1,7 @@
 import { addDays, ageInYears, type GameTime } from "../core/calendar";
 import type { GameContext } from "../core/game";
 import { hashString } from "../core/rng";
+import { rivalCandidateAppeal } from "../ai/rivals";
 import { cityCosts } from "../economy/costs";
 import { transact } from "../finance/finance";
 import { personById } from "../social/people";
@@ -178,7 +179,8 @@ function candidateScore(ctx: GameContext, office: Office, c: Candidate): number 
   const country = countryOf(ctx, office);
   const party = c.partyId ? country.parties.find((p) => p.id === c.partyId) : undefined;
   const base = party ? localStrength(party, office) : 0.04;
-  const appeal = c.id === "player" ? playerAppeal(ctx, office) : c.appeal;
+  const appeal =
+    c.id === "player" ? playerAppeal(ctx, office) : c.appeal + rivalCandidateAppeal(ctx, c.id);
   return base * Math.max(0.2, 1 + appeal) * (c.incumbent ? 1.12 : 1);
 }
 
@@ -244,6 +246,14 @@ function closeFiling(ctx: GameContext, election: Election): void {
   election.candidates = nominees(ctx, office, true);
   if (ctx.state.player.politics.candidacy?.electionId === election.id) {
     election.candidates.push(playerCandidate(ctx, office));
+    // A political rival takes their party's slot to face the player directly.
+    const rival = ctx.state.rivals.find((r) => r.kind === "political");
+    if (rival && !election.candidates.some((c) => c.id === rival.personId)) {
+      const slot = election.candidates.find(
+        (c) => c.id !== "player" && c.partyId !== playerParty(ctx)?.id,
+      );
+      if (slot) slot.id = rival.personId;
+    }
   }
 }
 

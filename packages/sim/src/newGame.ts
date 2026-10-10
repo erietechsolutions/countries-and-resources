@@ -84,6 +84,7 @@ export function createNewGame(
     businesses: [],
     politics: emptyPolitics(),
     story: emptyStory(),
+    rivals: [],
     nextBusinessId: 1,
     log: [],
   };

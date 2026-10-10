@@ -1,6 +1,7 @@
 import type { Character } from "../character/character";
 import type { FamilyMember } from "../life/types";
 import type { Business } from "../business/business";
+import type { Rival } from "../ai/rivals";
 import type { StoryState } from "../events/storyEvents";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
@@ -24,6 +25,7 @@ export interface GameState {
   businesses: Business[];
   politics: PoliticsState;
   story: StoryState;
+  rivals: Rival[];
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

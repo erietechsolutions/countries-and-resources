@@ -43,3 +43,4 @@ export * from "./politics/policies";
 export * from "./politics/types";
 export * from "./crime/crime";
 export * from "./events/storyEvents";
+export * from "./ai/rivals";

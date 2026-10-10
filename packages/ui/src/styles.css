@@ -1613,3 +1613,13 @@ select.input {
   font-size: 15px;
   line-height: 1.55;
 }
+
+/* ---------- Rivals ---------- */
+.person-card.rival {
+  border: 1px solid #7a3431;
+  background: #241515;
+}
+.tag.danger-tag {
+  background: #3a1d1c;
+  color: #f2a6a3;
+}

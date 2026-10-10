@@ -13,6 +13,7 @@ import {
   type WageLevel,
 } from "../business/business";
 import { embezzle, joinGang, leaveGang, resolveCase, type CaseChoice } from "../crime/crime";
+import { investigate, reconcile } from "../ai/rivals";
 import type { CredentialId } from "../education/courses";
 import { chooseEventOption } from "../events/storyEvents";
 import { repayDebt, takeLoan } from "../finance/finance";
@@ -72,6 +73,8 @@ export type Command =
   | { type: "crime.leaveGang" }
   | { type: "crime.embezzle"; amountCents: number }
   | { type: "event.choose"; index: number }
+  | { type: "rival.reconcile"; personId: string }
+  | { type: "rival.investigate"; personId: string }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -141,6 +144,8 @@ export const commandHandlers: CommandHandlers = {
   "crime.leaveGang": (ctx) => leaveGang(ctx),
   "crime.embezzle": (ctx, cmd) => alive(ctx) ?? embezzle(ctx, cmd.amountCents),
   "event.choose": (ctx, cmd) => chooseEventOption(ctx, cmd.index),
+  "rival.reconcile": (ctx, cmd) => alive(ctx) ?? reconcile(ctx, cmd.personId),
+  "rival.investigate": (ctx, cmd) => alive(ctx) ?? investigate(ctx, cmd.personId),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

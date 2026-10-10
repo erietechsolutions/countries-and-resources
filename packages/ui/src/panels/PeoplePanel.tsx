@@ -9,6 +9,9 @@ import {
   socialActionBlocker,
   socialActionCost,
   formatMoney,
+  investigateCost,
+  reconcileCost,
+  RIVAL_LABELS,
   TRAIT_LABELS,
   type Relationship,
   type RelationshipKind,
@@ -53,6 +56,39 @@ function PersonCard({ r }: { r: Relationship }) {
   const person = personById(game, r.personId);
   if (!person) return null;
   const romantic = r.kind === "dating" || r.kind === "engaged" || r.kind === "spouse";
+  const rival = game.state.rivals.find((x) => x.personId === r.personId);
+  if (rival) {
+    return (
+      <li className="person-card rival">
+        <div>
+          <strong>
+            {person.firstName} {person.lastName}
+          </strong>{" "}
+          <span className="tag danger-tag">{RIVAL_LABELS[rival.kind]}</span>
+          <div className="muted small">
+            {personAge(game, person)} · {person.occupation} ·{" "}
+            {person.traits.map((t) => TRAIT_LABELS[t]).join(", ")}
+          </div>
+        </div>
+        <Meter label="Hostility" value={rival.hostility} compact tone="neutral" />
+        {rival.lastAction && <p className="small warn-text">Last move: {rival.lastAction}</p>}
+        <div className="row wrap">
+          <button
+            className="btn small"
+            onClick={() => act({ type: "rival.reconcile", personId: r.personId })}
+          >
+            Make peace ({formatMoney(reconcileCost(game), true)})
+          </button>
+          <button
+            className="btn small danger"
+            onClick={() => act({ type: "rival.investigate", personId: r.personId })}
+          >
+            Dig up dirt ({formatMoney(investigateCost(game), true)})
+          </button>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="person-card">
       <div className="row between">

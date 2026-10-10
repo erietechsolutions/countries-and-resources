@@ -16,6 +16,7 @@ export function normalizeState(state: GameState): void {
   s.nextBusinessId ??= 1;
   s.politics ??= emptyPolitics();
   s.story ??= emptyStory();
+  s.rivals ??= [];
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };
