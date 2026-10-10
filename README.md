@@ -52,6 +52,7 @@ npm run typecheck  # TypeScript checks for all packages
 npm run lint
 npm run geodata    # rebuild data/geography/real-world.json from Natural Earth
 npm run balance    # bots play 180 days in 8 cities; prints a difficulty report
+npx tsx tools/sim/politicsCareer.ts 6   # bots try a 6-year political career
 ```
 
 ## Project layout
@@ -64,7 +65,7 @@ packages/ui/    React + PixiJS client: menus, new-game wizard, world map, game s
 apps/desktop/   Tauri desktop wrapper (Rust shell, icons, installer config).
 data/           Static game content served to the client (map geography today).
 tools/geodata/  Pipeline that builds the real-world map from Natural Earth data.
-tools/sim/      Balance bot and difficulty report.
+tools/sim/      Balance and politics bots and their reports.
 docs/           Design decisions and the roadmap.
 ```
 

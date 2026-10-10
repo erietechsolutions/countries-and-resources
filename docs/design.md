@@ -98,8 +98,41 @@ positions with their relative sizes. Everything economic and political is genera
   social classes whose satisfaction moves stability. Companies in cities the player has lived in
   grow, shrink, lay off workers, go bankrupt, and get founded.
 
+## Life, business and politics (Phases 3–4)
+
+- **People** (`social/`): NPCs are created when the player meets them and stay in the save.
+  Relationships have a kind (acquaintance, friend, partner, family, rival) and a strength that
+  fades without contact. Reputation is tracked with six groups, plus fame.
+- **Businesses** (`business/`): player companies run monthly: revenue from local demand, price
+  and brand, wages and rent. Running out of cash means bankruptcy.
+- **Politics** (`politics/`): offices are created per country the first time politics is needed.
+  Democracies hold elections, while other governments appoint office holders. When a country's
+  government type changes, its offices gain or lose elections. Single-seat races have a party
+  primary. Multi-seat councils use open lists, so a party's vote is split across its slate and
+  the player competes with their own party's candidates for its seats. Player appeal comes from
+  reputation, fame, campaign effort and ads, with diminishing returns. Legislatures are
+  allocated by largest remainder, and in parliamentary systems the biggest party's leader
+  becomes head of government. Office holders can propose bills that change policy levers.
+- **Crime** (`crime/`): each crime has a detection chance that grows with police heat and the
+  country's policing and falls with gang rank. An arrest opens a case that the player can plead,
+  fight or try to bribe. Sentences scale with the record. Undetected crimes can become secrets
+  that surface later as scandals.
+- **Story events** (`events/storyEvents.ts`): each day has a small chance of an event whose
+  `setup` returns data (or null when it doesn't apply). The game pauses for the choice. Choices
+  can be blocked and can schedule follow-up events. If the player doesn't choose, the event
+  resolves to its default choice after 3 days.
+- **Rivals** (`ai/rivals.ts`): spawned from the strongest opponent in the player's race, a
+  competitor of a successful business, or a crime boss. They act on a cooldown with utility-based
+  moves scaled by hostility. Each year, ruling parties in other countries enact policies that
+  match their ideology.
+
 ## Balance
 
 `npm run balance` plays a rule-based bot through Hard Economic and Economic starts in 8 cities
 with 3 seeds and prints a table. `tools/sim/balance.test.ts` keeps the basics true in CI: a
 homeless start is survivable, work is findable but not instant, and starting at home is easier.
+
+`npx tsx tools/sim/politicsCareer.ts [years]` gives bots political ambition in 6 democracies and
+reports races, wins, primaries and party rank. A bot that always joins the most popular party and
+campaigns flat out wins about 85% of its races over 6 years. That is the upper bound, and normal
+play should do worse.

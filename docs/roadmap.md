@@ -33,20 +33,29 @@ Each milestone ends with something playable.
       libraries are installed, Windows via GitHub Actions), app icon, first-game tutorial,
       notifications and auto-pause, balance bot with automated difficulty tests
 
-## Phase 3: Life and business
+## Phase 3: Life and business ✅
 
-- [ ] **M8 – Random world map**: terrain, Voronoi provinces, generated countries and names
-- [ ] **M9 – Relationships and reputation**
-- [ ] **M10 – Player companies**
-- [ ] **M11 – Moving and immigration**
+- [x] **M8 – Random world map**: terrain, Voronoi provinces, generated countries and names
+- [x] **M9 – Relationships and reputation**: NPCs met through work, school and activities;
+      friends, partners and family; reputation with community, workers, business,
+      establishment, activists and the underworld, plus fame
+- [x] **M10 – Player companies**: founding, hiring, pricing, marketing, brand and
+      bankruptcy
+- [x] **M11 – Moving and immigration**: moving between cities, visas and citizenship
 
-## Phase 4: Politics and power
+## Phase 4: Politics and power ✅
 
-- [ ] **M12 – Local politics**
-- [ ] **M13 – Regional and national government**
-- [ ] **M14 – Crime, corruption and law**
-- [ ] **M15 – Events and narrative**
-- [ ] **M16 – AI rivals**
+- [x] **M12 – Local politics**: parties, party ranks, city councils and mayors, filing,
+      campaigning, fundraising, ads and elections
+- [x] **M13 – Regional and national government**: regional councils, governors, legislatures
+      (proportional seats), heads of government, bills, 14 policy levers and budgets
+- [x] **M14 – Crime, corruption and law**: petty and organized crime, gangs, embezzlement and
+      bribery, police heat, arrests, trials (plead, fight or bribe), fines, probation, prison,
+      criminal records and scandals
+- [x] **M15 – Events and narrative**: 23 story events with choices, some of which lead to
+      follow-up events
+- [x] **M16 – AI rivals**: political, business and criminal rivals who attack, poach and tip off
+      the police; AI governments change policy in other countries
 
 ## Phase 5: Conflict and nation-building
 
