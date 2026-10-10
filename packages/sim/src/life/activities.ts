@@ -1,4 +1,5 @@
 import { businessById } from "../business/business";
+import { commitCrime, CRIME_RISK } from "../crime/crime";
 import { localPolicy } from "../politics/policies";
 import { canWorkLegally } from "./moving";
 import { newDailyFlags } from "../character/character";
@@ -27,7 +28,7 @@ import type { Relationship } from "../social/types";
 import type { LedgerCategory, Needs } from "./types";
 
 export type ActivityCategory =
-  "rest" | "food" | "hygiene" | "home" | "social" | "work" | "money" | "growth";
+  "rest" | "food" | "hygiene" | "home" | "social" | "work" | "money" | "growth" | "crime";
 
 export const CATEGORY_LABELS: Record<ActivityCategory, string> = {
   rest: "Rest",
@@ -38,6 +39,7 @@ export const CATEGORY_LABELS: Record<ActivityCategory, string> = {
   work: "Work",
   money: "Make money",
   growth: "Self-improvement",
+  crime: "Crime",
 };
 
 export interface AmountOption {
@@ -849,7 +851,130 @@ export const ACTIVITIES: ActivityDef[] = [
     },
   },
 
+  // ---- Crime
+  {
+    id: "shoplift",
+    label: "Shoplift",
+    category: "crime",
+    description: "Grab some food and walk out. Small reward, small risk.",
+    interruptible: true,
+    hours: () => 1,
+    unavailable: during(8, 22),
+    onFinish: (ctx) => {
+      if (commitCrime(ctx, "shoplifting", CRIME_RISK.shoplift)) return;
+      const p = ctx.state.player;
+      p.inventory.meals = Math.min(mealCapacity(ctx), p.inventory.meals + 2);
+      ctx.log("life", "You got away with some food.");
+    },
+  },
+  {
+    id: "pickpocket",
+    label: "Pick pockets",
+    category: "crime",
+    description: "Lift wallets in crowded places.",
+    interruptible: true,
+    hours: () => 2,
+    unavailable: during(10, 22),
+    onFinish: (ctx) => {
+      if (commitCrime(ctx, "pickpocketing", CRIME_RISK.pickpocket)) return;
+      const pay = Math.round(
+        cityCosts(ctx, ctx.state.player.cityId).medianWageCents * ctx.rng.float(1, 6),
+      );
+      earn(ctx, pay, "other", "Stolen cash");
+    },
+  },
+  {
+    id: "burglary",
+    label: "Break into a house",
+    category: "crime",
+    description: "Late at night. Serious money, serious prison time.",
+    interruptible: true,
+    hours: () => 4,
+    unavailable: (ctx) => {
+      const h = hourNow(ctx);
+      return h >= 22 || h < 3 ? null : "Only late at night (10 PM–3 AM).";
+    },
+    effects: () => ({ energy: -1.5 }),
+    onFinish: (ctx) => {
+      if (commitCrime(ctx, "burglary", CRIME_RISK.burglary)) return;
+      const pay = Math.round(
+        cityCosts(ctx, ctx.state.player.cityId).medianWageCents * ctx.rng.float(15, 60),
+      );
+      earn(ctx, pay, "other", "Stolen goods, fenced");
+      ctx.alert("info", `The job went smoothly: ${formatMoney(pay, true)}.`);
+    },
+  },
+  {
+    id: "dealDrugs",
+    label: "Deal drugs",
+    category: "crime",
+    description: "Needs underworld connections (underworld reputation 10+).",
+    interruptible: true,
+    hours: () => 4,
+    unavailable: all(during(14, 24), (ctx) =>
+      ctx.state.player.reputation.underworld >= 10
+        ? null
+        : "You don't have the connections (underworld 10+).",
+    ),
+    effects: () => ({ happiness: -1 }),
+    onFinish: (ctx) => {
+      if (commitCrime(ctx, "drugDealing", CRIME_RISK.dealDrugs)) return;
+      const pay = Math.round(
+        cityCosts(ctx, ctx.state.player.cityId).medianWageCents * ctx.rng.float(10, 30),
+      );
+      earn(ctx, pay, "other", "Street sales");
+    },
+  },
+  {
+    id: "gangJob",
+    label: "Do a job for the gang",
+    category: "crime",
+    description: "Collections, deliveries, intimidation. Pays more as you rise in the gang.",
+    interruptible: true,
+    hours: () => 4,
+    unavailable: (ctx) => (ctx.state.player.legal.gangRank > 0 ? null : "You're not in a gang."),
+    effects: () => ({ energy: -1.5, happiness: -0.5 }),
+    onFinish: (ctx) => {
+      const p = ctx.state.player;
+      if (commitCrime(ctx, "gangJob", CRIME_RISK.gangJob)) return;
+      const pay = Math.round(
+        cityCosts(ctx, p.cityId).medianWageCents *
+          ctx.rng.float(20, 50) *
+          (1 + p.legal.gangRank * 0.5),
+      );
+      earn(ctx, pay, "other", "Gang earnings");
+      adjustReputation(ctx, "underworld", 1.5);
+      if (ctx.rng.chance(0.1)) {
+        p.needs.health = Math.max(5, p.needs.health - 20);
+        ctx.alert("bad", "Things got violent. You were hurt.");
+      }
+    },
+  },
+
   // ---- Started by the game
+  {
+    id: "custody",
+    label: "In police custody",
+    category: "rest",
+    description: "Waiting for your hearing.",
+    system: true,
+    interruptible: false,
+    hours: () => 48,
+    decay: { food: 0.4, hygiene: 1 },
+    effects: () => ({ happiness: -1.5 }),
+  },
+  {
+    id: "prison",
+    label: "In prison",
+    category: "rest",
+    description: "Serving your sentence.",
+    system: true,
+    interruptible: false,
+    hours: () => 24,
+    decay: { food: 0, energy: 0.4, hygiene: 0.5 },
+    effects: () => ({ food: 0.2, happiness: -0.4, health: 0.1 }),
+    onHour: (ctx) => addXp(ctx, { labor: 0.2 }),
+  },
   {
     id: "traveling",
     label: "Traveling",

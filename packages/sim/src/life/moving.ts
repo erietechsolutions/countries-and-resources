@@ -3,6 +3,7 @@ import type { GameContext } from "../core/game";
 import { hashString } from "../core/rng";
 import type { System } from "../core/systems";
 import { cityCosts, countryOf } from "../economy/costs";
+import { recordPenalty } from "../crime/crime";
 import { transact } from "../finance/finance";
 import { spouseOf } from "../social/social";
 import { formatMoney } from "../world/format";
@@ -264,7 +265,7 @@ export function visaOptions(ctx: GameContext, countryId: CountryId): VisaOption[
     {
       visa: "work",
       feeCents: destWage * 30,
-      chance: open * (qualified ? 0.85 : 0.25),
+      chance: open * (qualified ? 0.85 : 0.25) * recordPenalty(ctx),
       days: 30,
       blocker: base(null),
       description:

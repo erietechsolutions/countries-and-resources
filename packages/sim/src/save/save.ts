@@ -1,6 +1,7 @@
 import { fullName, newDailyFlags, type Character } from "../character/character";
 import { Rng } from "../core/rng";
 import { generateFamily } from "../life/family";
+import { emptyLegal } from "../crime/crime";
 import { emptyPlayerPolitics } from "../politics/types";
 import { emptyReputation } from "../social/types";
 import { emptySkills } from "../work/skills";
@@ -95,6 +96,7 @@ function migrateV1toV2(input: unknown): unknown {
     visas: [],
     visaApplication: null,
     politics: emptyPlayerPolitics(),
+    legal: emptyLegal(),
   };
   state.player = player;
   state.family = generateFamily(

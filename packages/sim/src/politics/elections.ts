@@ -170,7 +170,8 @@ export function playerAppeal(ctx: GameContext, office: Office): number {
   const effort = c ? Math.min(0.6, c.effort / 120) * scale : 0;
   const ads = c ? Math.min(0.5, Math.log10(1 + c.spentCents / (wage * 40)) * 0.25) * scale : 0;
   const incumbency = office.holders.includes("player") ? (p.politics.approval - 50) / 100 : 0;
-  return reputation + rep.fame / 120 + effort + ads + incumbency;
+  const record = p.legal.record.length * 0.15;
+  return reputation + rep.fame / 120 + effort + ads + incumbency - record;
 }
 
 function candidateScore(ctx: GameContext, office: Office, c: Candidate): number {

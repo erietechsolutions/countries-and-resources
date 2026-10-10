@@ -1,3 +1,4 @@
+import { emptyLegal } from "../crime/crime";
 import { emptyPlayerPolitics, emptyPolitics } from "../politics/types";
 import { emptyReputation } from "../social/types";
 import type { GameState } from "./state";
@@ -26,4 +27,5 @@ export function normalizeState(state: GameState): void {
   p.visas ??= [];
   p.visaApplication ??= null;
   p.politics ??= emptyPlayerPolitics();
+  p.legal ??= emptyLegal();
 }

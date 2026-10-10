@@ -3,6 +3,7 @@ import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { cityCosts, countryOf } from "../economy/costs";
 import { CREDENTIAL_LABELS } from "../education/courses";
+import { recordPenalty } from "../crime/crime";
 import { transact } from "../finance/finance";
 import type { JobOffer } from "../life/types";
 import { formatMoney } from "../world/format";
@@ -68,6 +69,8 @@ export function hireChance(ctx: GameContext, occ: OccupationDef): number {
     1 +
     (p.reputation.business + p.reputation.workers) / 400 -
     Math.max(0, p.reputation.underworld) / 300;
+  // A criminal record makes employers wary.
+  chance *= recordPenalty(ctx);
   return Math.max(0, Math.min(0.9, chance));
 }
 

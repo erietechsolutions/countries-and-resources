@@ -12,6 +12,7 @@ import {
   type PriceLevel,
   type WageLevel,
 } from "../business/business";
+import { embezzle, joinGang, leaveGang, resolveCase, type CaseChoice } from "../crime/crime";
 import type { CredentialId } from "../education/courses";
 import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
@@ -65,6 +66,10 @@ export type Command =
   | { type: "politics.propose"; officeId: string; policyId: string; direction: 1 | -1 }
   | { type: "politics.vote"; billId: string; vote: "yes" | "no" }
   | { type: "politics.sign"; billId: string; sign: boolean }
+  | { type: "legal.resolve"; choice: CaseChoice }
+  | { type: "crime.joinGang" }
+  | { type: "crime.leaveGang" }
+  | { type: "crime.embezzle"; amountCents: number }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -129,6 +134,10 @@ export const commandHandlers: CommandHandlers = {
     alive(ctx) ?? proposeBill(ctx, cmd.officeId, cmd.policyId, cmd.direction),
   "politics.vote": (ctx, cmd) => castVote(ctx, cmd.billId, cmd.vote),
   "politics.sign": (ctx, cmd) => signBill(ctx, cmd.billId, cmd.sign),
+  "legal.resolve": (ctx, cmd) => resolveCase(ctx, cmd.choice),
+  "crime.joinGang": (ctx) => alive(ctx) ?? joinGang(ctx),
+  "crime.leaveGang": (ctx) => leaveGang(ctx),
+  "crime.embezzle": (ctx, cmd) => alive(ctx) ?? embezzle(ctx, cmd.amountCents),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

@@ -13,7 +13,7 @@ import {
   playerOffices,
 } from "./government";
 import { alignment, parseScope, policiesForLevel, policyFor } from "./policies";
-import type { Bill, HolderId, Office } from "./types";
+import type { Bill, HolderId } from "./types";
 
 const VOTE_DAYS = 7;
 
@@ -31,11 +31,6 @@ function ideologyOf(
     ? countryOfScope(ctx, scope).parties.find((p) => p.id === partyId)
     : undefined;
   return party?.ideology ?? { economic: 0, social: 0, authority: 0, nationalism: 0 };
-}
-
-/** Offices whose holder can propose laws: councils, legislatures and executives. */
-export function canPropose(office: Office): boolean {
-  return true && office.seats >= 1;
 }
 
 export function proposeBill(

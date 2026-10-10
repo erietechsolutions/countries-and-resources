@@ -20,6 +20,7 @@ import {
   type Relationship,
   type Reputation,
 } from "../social/types";
+import { emptyLegal, type LegalState } from "../crime/crime";
 import type { Residency, VisaApplication, VisaGrant } from "../life/moving";
 import { emptyPlayerPolitics, type PlayerPolitics } from "../politics/types";
 import { emptySkills, type SkillXp } from "../work/skills";
@@ -82,6 +83,7 @@ export interface Character {
   visas: VisaGrant[];
   visaApplication: VisaApplication | null;
   politics: PlayerPolitics;
+  legal: LegalState;
 }
 
 export const NAME_LIMIT = 30;
@@ -157,6 +159,7 @@ export function createPlayerCharacter(
     visas: [],
     visaApplication: null,
     politics: emptyPlayerPolitics(),
+    legal: emptyLegal(),
   };
 }
 

@@ -26,6 +26,7 @@ import { MapView, type FocusRequest } from "../map/MapView";
 import { BusinessPanel } from "../panels/BusinessPanel";
 import { HomePanel } from "../panels/HomePanel";
 import { LifePanel } from "../panels/LifePanel";
+import { LawPanel } from "../panels/LawPanel";
 import { MoneyPanel } from "../panels/MoneyPanel";
 import { MovePanel } from "../panels/MovePanel";
 import { PeoplePanel } from "../panels/PeoplePanel";
@@ -45,7 +46,8 @@ interface Props {
 }
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
-type Tab = "life" | "work" | "business" | "people" | "politics" | "money" | "home" | "region";
+type Tab =
+  "life" | "work" | "business" | "people" | "politics" | "law" | "money" | "home" | "region";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "life", label: "Life" },
@@ -53,6 +55,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "business", label: "Business" },
   { id: "people", label: "People" },
   { id: "politics", label: "Politics" },
+  { id: "law", label: "Law" },
   { id: "money", label: "Money" },
   { id: "home", label: "Home" },
   { id: "region", label: "Region" },
@@ -313,6 +316,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "people" && <PeoplePanel />}
             {tab === "business" && <BusinessPanel />}
             {tab === "politics" && <PoliticsPanel />}
+            {tab === "law" && <LawPanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
             {tab === "region" && (

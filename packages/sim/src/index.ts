@@ -41,3 +41,4 @@ export * from "./politics/government";
 export * from "./politics/party";
 export * from "./politics/policies";
 export * from "./politics/types";
+export * from "./crime/crime";
