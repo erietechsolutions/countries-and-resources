@@ -1,6 +1,7 @@
 import type { Character } from "../character/character";
 import type { FamilyMember } from "../life/types";
 import type { Business } from "../business/business";
+import type { StoryState } from "../events/storyEvents";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
@@ -22,6 +23,7 @@ export interface GameState {
   /** Businesses founded by the player (including closed ones, for history). */
   businesses: Business[];
   politics: PoliticsState;
+  story: StoryState;
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

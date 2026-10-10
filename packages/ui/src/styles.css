@@ -1599,3 +1599,17 @@ select.input {
   background: #211d15;
   border: 1px solid #6a5426;
 }
+
+/* ---------- Story events ---------- */
+.story-modal {
+  border-color: #6a5426;
+  width: min(480px, 100%);
+}
+.story-modal h3 {
+  font-family: var(--display);
+  font-size: 22px;
+}
+.story-modal p {
+  font-size: 15px;
+  line-height: 1.55;
+}

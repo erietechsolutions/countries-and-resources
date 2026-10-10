@@ -18,6 +18,7 @@ import {
 import { Avatar } from "../components/Avatar";
 import { CitySearch } from "../components/CitySearch";
 import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards";
+import { StoryEventModal } from "../components/StoryEventModal";
 import { Toasts, type Toast } from "../components/Toasts";
 import { Tutorial } from "../components/Tutorial";
 import { GameUiContext, useAct, type GameUi } from "../game/GameContext";
@@ -111,6 +112,8 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
       notify(e.level, e.message);
       if (e.level === "bad" && pauseOnBadNews) runner.setSpeed(0);
     });
+    // Story events always pause: they need a decision.
+    const offStory = game.events.on("storyEvent", () => runner.setSpeed(0));
     const offEnded = game.events.on("activityEnded", (e) => {
       // Pause once the hour's systems have settled, if the player is left with nothing to do.
       if (!pauseOnActivityEnd || e.reason === "cancelled") return;
@@ -120,6 +123,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
     });
     return () => {
       offAlert();
+      offStory();
       offEnded();
     };
   }, [game, runner, notify, pauseOnActivityEnd, pauseOnBadNews]);
@@ -390,6 +394,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             )}
           </section>
           <Tutorial onTab={setTab} />
+          <StoryEventModal />
         </div>
 
         {menu !== null && (

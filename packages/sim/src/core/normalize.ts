@@ -1,4 +1,5 @@
 import { emptyLegal } from "../crime/crime";
+import { emptyStory } from "../events/storyEvents";
 import { emptyPlayerPolitics, emptyPolitics } from "../politics/types";
 import { emptyReputation } from "../social/types";
 import type { GameState } from "./state";
@@ -14,6 +15,7 @@ export function normalizeState(state: GameState): void {
   s.businesses ??= [];
   s.nextBusinessId ??= 1;
   s.politics ??= emptyPolitics();
+  s.story ??= emptyStory();
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };

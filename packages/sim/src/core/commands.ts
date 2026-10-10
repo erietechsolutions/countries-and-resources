@@ -14,6 +14,7 @@ import {
 } from "../business/business";
 import { embezzle, joinGang, leaveGang, resolveCase, type CaseChoice } from "../crime/crime";
 import type { CredentialId } from "../education/courses";
+import { chooseEventOption } from "../events/storyEvents";
 import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
 import { moveBackHome, rentUnit } from "../life/housing";
@@ -70,6 +71,7 @@ export type Command =
   | { type: "crime.joinGang" }
   | { type: "crime.leaveGang" }
   | { type: "crime.embezzle"; amountCents: number }
+  | { type: "event.choose"; index: number }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -138,6 +140,7 @@ export const commandHandlers: CommandHandlers = {
   "crime.joinGang": (ctx) => alive(ctx) ?? joinGang(ctx),
   "crime.leaveGang": (ctx) => leaveGang(ctx),
   "crime.embezzle": (ctx, cmd) => alive(ctx) ?? embezzle(ctx, cmd.amountCents),
+  "event.choose": (ctx, cmd) => chooseEventOption(ctx, cmd.index),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

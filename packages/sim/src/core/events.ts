@@ -21,6 +21,8 @@ export type SimEvent =
   | { type: "alert"; level: AlertLevel; message: string }
   /** The player's current activity ended (finished, cancelled or interrupted). */
   | { type: "activityEnded"; activityId: string; reason: "finished" | "cancelled" | "interrupted" }
+  /** A story event needs the player's decision. */
+  | { type: "storyEvent"; eventId: string }
   | { type: "commandApplied"; command: Command }
   | { type: "commandRejected"; command: Command; reason: string };
 

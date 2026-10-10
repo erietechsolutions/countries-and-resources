@@ -9,8 +9,6 @@ import { adjustReputation } from "../social/social";
 import { formatMoney } from "../world/format";
 import { leaveJob } from "../work/jobs";
 
-const DAY = 24;
-
 export type CrimeId =
   | "shoplifting"
   | "pickpocketing"
@@ -19,7 +17,8 @@ export type CrimeId =
   | "gangJob"
   | "embezzlement"
   | "bribery"
-  | "fraud";
+  | "fraud"
+  | "publicDisorder";
 
 export const CRIME_LABELS: Record<CrimeId, string> = {
   shoplifting: "Shoplifting",
@@ -30,6 +29,7 @@ export const CRIME_LABELS: Record<CrimeId, string> = {
   embezzlement: "Embezzlement",
   bribery: "Bribery",
   fraud: "Fraud",
+  publicDisorder: "Public disorder",
 };
 
 /** Seriousness 1–5: drives sentences and scandal damage. */
@@ -42,6 +42,7 @@ export const CRIME_SEVERITY: Record<CrimeId, number> = {
   embezzlement: 4,
   bribery: 3,
   fraud: 3,
+  publicDisorder: 1,
 };
 
 export interface Conviction {
