@@ -13,6 +13,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+# Used by the code tauri::generate_context! emits for plugin configuration.
+serde_json = "1"
 tauri-plugin-process = "2.4"
 
 # Self-updates from GitHub Releases (desktop only).
