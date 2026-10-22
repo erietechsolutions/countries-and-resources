@@ -50,7 +50,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBQ0ZDRTUxRjFDQTY5MjYKUldRbWFjcnhVYzdQNm1WWEFKSzFka3k4N3ZSeGNkc0JyeFNCcnd3SVkrTDJSNEpkNDlJQnFMcTQK",
       "endpoints": [
-        "https://github.com/GITHUB_OWNER/countries-and-resources/releases/latest/download/latest.json"
+        "https://github.com/erietechsolutions/countries-and-resources/releases/latest/download/latest.json"
       ]
     }
   }
