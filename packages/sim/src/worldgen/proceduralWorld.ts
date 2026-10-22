@@ -112,7 +112,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const round2 = (v: number) => Math.round(v * 100) / 100;
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 
-function headOfStateTitle(government: GovernmentType, rng: Rng): string {
+export function headOfStateTitle(government: GovernmentType, rng: Rng): string {
   switch (government) {
     case "democracy":
       return rng.pick(["President", "Prime Minister", "Chancellor"]);

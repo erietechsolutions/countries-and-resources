@@ -346,7 +346,8 @@ export function runBudget(c: CountryState): void {
       c.socialServices * 0.08 +
       healthcare +
       (c.ruleOfLaw ?? 0.5) * 0.025 +
-      (c.businessRegulation ?? 0.5) * 0.005);
+      (c.businessRegulation ?? 0.5) * 0.005 +
+      ((c.military?.spending ?? 0.5) - 0.5) * 0.04);
   const b = budgetOf(c);
   const interest = (b.debtCents * 0.03) / 12;
   b.revenueCents = Math.round(revenue);

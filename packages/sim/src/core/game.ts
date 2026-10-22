@@ -4,6 +4,7 @@ import { ensureCompanies } from "../work/companies";
 import { normalizeState } from "./normalize";
 import { initCountryEconomy } from "../worldgen/economyInit";
 import { generateMissingCities } from "../worldgen/proceduralWorld";
+import { liveGeography } from "../world/territory";
 import { toDateParts } from "./calendar";
 import { commandHandlers, type Command, type CommandHandler, type CommandResult } from "./commands";
 import { EventBus, type AlertLevel, type LogCategory } from "./events";
@@ -30,10 +31,12 @@ export interface GameContext {
 export class Game implements GameContext {
   readonly events = new EventBus();
   readonly rng: Rng;
+  /** This game's own copy of the map, with borders as they stand in this game. */
+  readonly geography: WorldGeography;
 
   constructor(
     readonly state: GameState,
-    readonly geography: WorldGeography,
+    geography: WorldGeography,
     private readonly systems: readonly System[] = defaultSystems,
   ) {
     if (state.world.geographyId !== geography.id) {
@@ -41,6 +44,7 @@ export class Game implements GameContext {
         `Save uses map "${state.world.geographyId}" but "${geography.id}" was provided.`,
       );
     }
+    this.geography = liveGeography(geography, state.world);
     this.rng = new Rng(state.rngState);
     normalizeState(state);
     upgradeWorld(this);
@@ -54,9 +58,9 @@ export class Game implements GameContext {
     return this.state.time;
   }
 
-  /** Advances the game by one hour per tick. */
+  /** Advances the game by one hour per tick. Time stops while the player is dead. */
   tick(hours = 1): void {
-    for (let i = 0; i < hours; i++) this.step();
+    for (let i = 0; i < hours && this.state.player.alive; i++) this.step();
     this.state.rngState = this.rng.state;
   }
 

@@ -12,6 +12,27 @@ import {
   type PriceLevel,
   type WageLevel,
 } from "../business/business";
+import {
+  arm,
+  disbandMilitia,
+  foundMilitia,
+  launchAttack,
+  recruit,
+  setOrders,
+} from "../conflict/militia";
+import { callReferendum, declareIndependence } from "../conflict/nation";
+import type { MilitiaOrders } from "../conflict/types";
+import {
+  breakAlliance,
+  declareWar,
+  improveRelations,
+  proposeAlliance,
+  proposePeace,
+  setMilitarySpending,
+} from "../conflict/war";
+import { chooseHeir } from "../life/aging";
+import type { CountryId, ProvinceId } from "../world/geography";
+import type { GovernmentType } from "../world/types";
 import { embezzle, joinGang, leaveGang, resolveCase, type CaseChoice } from "../crime/crime";
 import { investigate, reconcile } from "../ai/rivals";
 import type { CredentialId } from "../education/courses";
@@ -75,6 +96,21 @@ export type Command =
   | { type: "event.choose"; index: number }
   | { type: "rival.reconcile"; personId: string }
   | { type: "rival.investigate"; personId: string }
+  | { type: "militia.found"; name: string }
+  | { type: "militia.recruit"; count: number }
+  | { type: "militia.arm"; amountCents: number }
+  | { type: "militia.orders"; orders: MilitiaOrders }
+  | { type: "militia.attack"; provinceId: ProvinceId; lead: boolean }
+  | { type: "militia.disband" }
+  | { type: "nation.declare"; name: string; government: GovernmentType }
+  | { type: "nation.referendum"; name: string; government: GovernmentType }
+  | { type: "diplomacy.improve"; countryId: CountryId }
+  | { type: "diplomacy.ally"; countryId: CountryId }
+  | { type: "diplomacy.breakAlliance"; countryId: CountryId }
+  | { type: "war.declare"; countryId: CountryId }
+  | { type: "war.peace"; warId: string }
+  | { type: "military.spending"; level: number }
+  | { type: "succession.choose"; personId: string }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -146,6 +182,21 @@ export const commandHandlers: CommandHandlers = {
   "event.choose": (ctx, cmd) => chooseEventOption(ctx, cmd.index),
   "rival.reconcile": (ctx, cmd) => alive(ctx) ?? reconcile(ctx, cmd.personId),
   "rival.investigate": (ctx, cmd) => alive(ctx) ?? investigate(ctx, cmd.personId),
+  "militia.found": (ctx, cmd) => alive(ctx) ?? foundMilitia(ctx, cmd.name),
+  "militia.recruit": (ctx, cmd) => alive(ctx) ?? recruit(ctx, cmd.count),
+  "militia.arm": (ctx, cmd) => alive(ctx) ?? arm(ctx, cmd.amountCents),
+  "militia.orders": (ctx, cmd) => alive(ctx) ?? setOrders(ctx, cmd.orders),
+  "militia.attack": (ctx, cmd) => alive(ctx) ?? launchAttack(ctx, cmd.provinceId, cmd.lead),
+  "militia.disband": (ctx) => alive(ctx) ?? disbandMilitia(ctx),
+  "nation.declare": (ctx, cmd) => alive(ctx) ?? declareIndependence(ctx, cmd.name, cmd.government),
+  "nation.referendum": (ctx, cmd) => alive(ctx) ?? callReferendum(ctx, cmd.name, cmd.government),
+  "diplomacy.improve": (ctx, cmd) => alive(ctx) ?? improveRelations(ctx, cmd.countryId),
+  "diplomacy.ally": (ctx, cmd) => alive(ctx) ?? proposeAlliance(ctx, cmd.countryId),
+  "diplomacy.breakAlliance": (ctx, cmd) => alive(ctx) ?? breakAlliance(ctx, cmd.countryId),
+  "war.declare": (ctx, cmd) => alive(ctx) ?? declareWar(ctx, cmd.countryId),
+  "war.peace": (ctx, cmd) => alive(ctx) ?? proposePeace(ctx, cmd.warId),
+  "military.spending": (ctx, cmd) => alive(ctx) ?? setMilitarySpending(ctx, cmd.level),
+  "succession.choose": (ctx, cmd) => chooseHeir(ctx, cmd.personId),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

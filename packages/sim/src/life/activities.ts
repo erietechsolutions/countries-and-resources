@@ -14,6 +14,7 @@ import { PHASE_DEMAND } from "../work/companies";
 import { leaveJob, recordMissedShift, searchForJobs, shiftStartsNow } from "../work/jobs";
 import { occupationById } from "../work/occupations";
 import type { SkillId } from "../work/skills";
+import { fatalCollapse } from "./aging";
 import { averageRelationship, changeRelationship } from "./family";
 import { applyHourlyNeeds, restingPlace, sleepRate, type DecayingNeed } from "./needs";
 import { personById, personName } from "../social/people";
@@ -1201,6 +1202,7 @@ export const activitySystem: System = {
 
     const current = p.activity?.id;
     if (p.needs.health <= 0 && current !== "hospital") {
+      if (fatalCollapse(ctx)) return;
       ctx.alert("bad", "You collapsed and were rushed to the hospital.");
       if (p.activity?.id === "work" && p.job) p.job.performance -= 5;
       forceActivity(ctx, "hospital");

@@ -8,7 +8,9 @@ import { Rng } from "./core/rng";
 import type { GameState } from "./core/state";
 import { MODES, validateConfig, type GameConfig } from "./modes/modes";
 import type { WorldGeography } from "./world/geography";
+import { emptyConflict } from "./conflict/types";
 import { emptyStory } from "./events/storyEvents";
+import { emptyDynasty } from "./life/aging";
 import { generateFamily } from "./life/family";
 import { emptyPolitics } from "./politics/types";
 import { formatMoney } from "./world/format";
@@ -85,6 +87,9 @@ export function createNewGame(
     politics: emptyPolitics(),
     story: emptyStory(),
     rivals: [],
+    conflict: emptyConflict(),
+    dynasty: emptyDynasty(),
+    succession: null,
     nextBusinessId: 1,
     log: [],
   };

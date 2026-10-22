@@ -2,7 +2,9 @@ import type { Character } from "../character/character";
 import type { FamilyMember } from "../life/types";
 import type { Business } from "../business/business";
 import type { Rival } from "../ai/rivals";
+import type { ConflictState } from "../conflict/types";
 import type { StoryState } from "../events/storyEvents";
+import type { DynastyState, PendingSuccession } from "../life/aging";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
@@ -26,6 +28,12 @@ export interface GameState {
   politics: PoliticsState;
   story: StoryState;
   rivals: Rival[];
+  /** Militias, uprisings, wars and diplomacy. */
+  conflict: ConflictState;
+  /** The family line, across characters. */
+  dynasty: DynastyState;
+  /** Set while the player's character is dead and an heir hasn't been chosen. */
+  succession: PendingSuccession | null;
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

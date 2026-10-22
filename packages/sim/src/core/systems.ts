@@ -6,7 +6,9 @@ import { housingSystem } from "../life/housing";
 import { immigrationSystem } from "../life/moving";
 import { businessSystem } from "../business/business";
 import { rivalsSystem } from "../ai/rivals";
+import { conflictSystem } from "../conflict/system";
 import { crimeSystem } from "../crime/crime";
+import { agingSystem } from "../life/aging";
 import { storySystem } from "../events/storyEvents";
 import { politicsSystem } from "../politics/system";
 import { socialSystem } from "../social/social";
@@ -61,7 +63,9 @@ export const defaultSystems: readonly System[] = [
   crimeSystem,
   storySystem,
   rivalsSystem,
+  conflictSystem,
   economySystem,
+  agingSystem,
   birthdaySystem,
   newYearSystem,
 ];

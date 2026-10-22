@@ -11,18 +11,20 @@ export function Meter({
   value: number;
   max?: number;
   display?: string;
-  tone?: "auto" | "accent" | "neutral";
+  /** "auto" colors low values as bad; "inverse" colors high values as bad. */
+  tone?: "auto" | "inverse" | "accent" | "neutral";
   compact?: boolean;
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
+  const health = tone === "inverse" ? 100 - pct : pct;
   const color =
     tone === "accent"
       ? "var(--accent)"
       : tone === "neutral"
         ? "var(--muted)"
-        : pct < 20
+        : health < 20
           ? "var(--bad)"
-          : pct < 45
+          : health < 45
             ? "var(--warn)"
             : "var(--good)";
   return (

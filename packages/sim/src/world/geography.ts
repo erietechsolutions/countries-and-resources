@@ -23,6 +23,8 @@ export interface GeoCountry {
   name: string;
   provinceIds: ProvinceId[];
   capitalCityId: CityId | null;
+  /** The capital on the original map (live maps move the capital when it is lost). */
+  homeCapitalCityId?: CityId | null;
   /** False for places like Antarctica where a character cannot start or live. */
   habitable: boolean;
 }

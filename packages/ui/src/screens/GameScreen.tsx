@@ -19,6 +19,7 @@ import { Avatar } from "../components/Avatar";
 import { CitySearch } from "../components/CitySearch";
 import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards";
 import { StoryEventModal } from "../components/StoryEventModal";
+import { SuccessionModal } from "../components/SuccessionModal";
 import { Toasts, type Toast } from "../components/Toasts";
 import { Tutorial } from "../components/Tutorial";
 import { GameUiContext, useAct, type GameUi } from "../game/GameContext";
@@ -32,6 +33,7 @@ import { MoneyPanel } from "../panels/MoneyPanel";
 import { MovePanel } from "../panels/MovePanel";
 import { PeoplePanel } from "../panels/PeoplePanel";
 import { PoliticsPanel } from "../panels/PoliticsPanel";
+import { PowerPanel } from "../panels/PowerPanel";
 import { WorkPanel } from "../panels/WorkPanel";
 import { useSettings } from "../storage/settings";
 import { AUTOSAVE_ID, newSaveId, writeSave } from "../storage/saves";
@@ -48,7 +50,16 @@ interface Props {
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
 type Tab =
-  "life" | "work" | "business" | "people" | "politics" | "law" | "money" | "home" | "region";
+  | "life"
+  | "work"
+  | "business"
+  | "people"
+  | "politics"
+  | "power"
+  | "law"
+  | "money"
+  | "home"
+  | "region";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "life", label: "Life" },
@@ -56,6 +67,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "business", label: "Business" },
   { id: "people", label: "People" },
   { id: "politics", label: "Politics" },
+  { id: "power", label: "Power" },
   { id: "law", label: "Law" },
   { id: "money", label: "Money" },
   { id: "home", label: "Home" },
@@ -114,6 +126,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
     });
     // Story events always pause: they need a decision.
     const offStory = game.events.on("storyEvent", () => runner.setSpeed(0));
+    const offDeath = game.events.on("playerDied", () => runner.setSpeed(0));
     const offEnded = game.events.on("activityEnded", (e) => {
       // Pause once the hour's systems have settled, if the player is left with nothing to do.
       if (!pauseOnActivityEnd || e.reason === "cancelled") return;
@@ -124,6 +137,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
     return () => {
       offAlert();
       offStory();
+      offDeath();
       offEnded();
     };
   }, [game, runner, notify, pauseOnActivityEnd, pauseOnBadNews]);
@@ -275,6 +289,8 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
           <MapView
             geography={geography}
             world={state.world}
+            conflict={state.conflict}
+            refreshKey={Math.floor(state.time / 24)}
             selection={selection}
             playerCityId={p.cityId}
             focus={focus}
@@ -320,6 +336,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "people" && <PeoplePanel />}
             {tab === "business" && <BusinessPanel />}
             {tab === "politics" && <PoliticsPanel />}
+            {tab === "power" && <PowerPanel />}
             {tab === "law" && <LawPanel />}
             {tab === "money" && <MoneyPanel />}
             {tab === "home" && <HomePanel />}
@@ -395,6 +412,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
           </section>
           <Tutorial onTab={setTab} />
           <StoryEventModal />
+          <SuccessionModal onExit={onExit} />
         </div>
 
         {menu !== null && (

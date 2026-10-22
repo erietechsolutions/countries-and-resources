@@ -151,6 +151,21 @@ export interface CountryState {
   budget?: { debtCents: number; revenueCents: number; spendingCents: number };
   /** Next national election (countries without detailed offices). */
   nextElection?: number;
+  /** Armed forces (derived from the country until first needed). */
+  military?: Military;
+}
+
+/** A country's armed forces. */
+export interface Military {
+  troops: number;
+  /** 0–1: equipment and training. */
+  quality: number;
+  /** 0–1: defense spending chosen by the government (0.5 = normal). */
+  spending: number;
+  /** 0–1: how far the country has mobilized for war. */
+  mobilization: number;
+  /** 0–100: how tired the country is of fighting. */
+  exhaustion: number;
 }
 
 export type Biome =
@@ -231,4 +246,24 @@ export interface WorldState {
   provinces: ProvinceState[];
   /** Indexed by CityId. */
   cities: CityState[];
+  /**
+   * Provinces that changed hands during play, by province id. The map file keeps the original
+   * borders; these overrides are applied on top of it when a game loads (see world/territory.ts).
+   */
+  provinceOwners?: Record<ProvinceId, CountryId>;
+  /** Countries founded during play. */
+  foundedCountries?: FoundedCountry[];
+  /** Bumped whenever borders change, so the map knows to redraw. */
+  territoryVersion?: number;
+}
+
+export interface FoundedCountry {
+  id: CountryId;
+  name: string;
+  /** The country it broke away from. */
+  parentId: CountryId;
+  /** "player", or the id of the insurgency that founded it. */
+  founderId: string;
+  foundedAt: number;
+  capitalCityId: CityId | null;
 }

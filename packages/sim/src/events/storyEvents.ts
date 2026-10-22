@@ -717,12 +717,12 @@ export const STORY_EVENTS: StoryEventDef[] = [
     cooldownDays: 180,
     setup: (ctx) => {
       const country = countryOf(ctx, ctx.state.player.cityId);
-      const party = ctx.rng.pick(
-        country.parties.filter((x) => x.legal).length
-          ? country.parties.filter((x) => x.legal)
-          : country.parties,
-      );
-      return party ? { partyId: party.id, name: party.name } : null;
+      const legal = country.parties.filter((x) => x.legal);
+      const options = legal.length ? legal : country.parties;
+      // Some autocracies have no parties at all.
+      if (options.length === 0) return null;
+      const party = ctx.rng.pick(options);
+      return { partyId: party.id, name: party.name };
     },
     text: (_ctx, d) =>
       `Organizers from the ${d.name} have heard about your community work. They'd like you to join, and they'll waive the fee.`,

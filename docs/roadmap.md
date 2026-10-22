@@ -57,12 +57,24 @@ Each milestone ends with something playable.
 - [x] **M16 – AI rivals**: political, business and criminal rivals who attack, poach and tip off
       the police; AI governments change policy in other countries
 
-## Phase 5: Conflict and nation-building
+## Phase 5: Conflict and nation-building ✅
 
-- [ ] **M17 – Militias and territory control**
-- [ ] **M18 – War and diplomacy**
-- [ ] **M19 – Founding new countries**
-- [ ] **M20 – Aging, death and succession**
+- [x] **M17 – Militias and territory control**: raise a militia, recruit, arm and train fighters,
+      give orders (train, raid, dig in, lie low), seize regions, levy "revolutionary taxes",
+      government crackdowns and arrests for insurrection; AI uprisings in unstable countries that
+      can be crushed, overthrow the government or break away
+- [x] **M18 – War and diplomacy**: armies, mobilization and war exhaustion, relations and
+      alliances, AI wars over border regions, weekly battles with occupation, peace treaties that
+      move borders, wartime economies; heads of government can improve relations, form alliances,
+      declare war, make peace and set defense spending; Conflict map mode
+- [x] **M19 – Founding new countries**: declare independence from militia-held territory, or
+      win an independence referendum as a regional governor; choose the name and government;
+      wars of independence; the founder becomes head of government of the new state
+- [x] **M20 – Aging, death and succession**: health declines with age, age-based mortality,
+      deadly collapses for older players, deaths in battle; parents and other people grow old and
+      die (with inheritances); on death, continue as an adult child, a spouse or a distant
+      relative, who inherits the estate (after inheritance tax), businesses and militia, and the
+      throne in non-democracies
 
 ## Phase 6: Expansion
 

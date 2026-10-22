@@ -126,6 +126,42 @@ positions with their relative sizes. Everything economic and political is genera
   moves scaled by hostility. Each year, ruling parties in other countries enact policies that
   match their ideology.
 
+## Conflict and nation-building (Phase 5)
+
+- **Borders change, the map file doesn't.** Each `Game` builds a live copy of the static map
+  (`world/territory.ts`): a shallow copy that shares shapes and borders, with the save's
+  `provinceOwners` and `foundedCountries` applied. Everything that asks which country a city is
+  in keeps working unchanged. `transferProvince` is the one way borders move: it updates the
+  live map, populations and capitals, drops the old country's city and regional offices (the new
+  owner sets up its own), and moves the player's legal status if their home changes hands. A
+  country's capital is its original one while it holds it, otherwise its largest city, so
+  capitals come out the same after a reload. The map outlines regions that changed hands and
+  re-places country names.
+- **Militias** (`conflict/militia.ts`) fight local garrisons, whose strength comes from the
+  region's population, the rule of law and stability, and grows as the government's crackdown
+  escalates. Attacks take 3 days. Leading from the front adds strength but risks wounds or death.
+  Holding regions brings recruits and taxes, and draws counterattacks. AI **uprisings** start in
+  countries below 20 stability and face police and part of the national army. They are crushed,
+  take the whole country (a junta takes over), or break away after a year holding a quarter of it.
+- **Wars** (`conflict/war.ts`) fight one battle a week along the front: the stronger side (army
+  size, quality, mobilization, stability, exhaustion) takes or liberates a region next to land it
+  holds, or lands on a coast. The score is the share of each side's people under occupation.
+  At peace, attackers keep occupied regions they claimed (everything they hold if the score is
+  60+, or on capitulation); a breakaway state fights to survive and never annexes its parent.
+  AI countries go to war over border regions when relations are bad and they are much stronger;
+  at most 3 AI wars run at once. Relations default to ideological and governmental similarity
+  and drift back after changes. Only the head of government can conduct the player's diplomacy.
+- **New countries** (`conflict/nation.ts`) inherit their parent's economy and institutions,
+  get new parties (plus the founder's own) and a government chosen by the founder. The parent
+  may accept the split or fight a war of independence.
+- **Aging and death** (`life/aging.ts`): health is capped from age 45, and the yearly chance of
+  death rises steeply with age (worse in poor health or without healthcare). Time stops while
+  the player is dead; `succession.choose` continues as an heir. Debts are settled from the
+  estate, spouses pay no inheritance tax, and a distant relative is always available. In
+  non-democracies, a head of government's heir inherits the office.
+- `npx tsx tools/sim/worldHistory.ts [years] [seeds]` lets the AI world run and reports its wars,
+  uprisings and new countries. Over 15 years expect roughly 1–5 wars and 0–2 new countries.
+
 ## Balance
 
 `npm run balance` plays a rule-based bot through Hard Economic and Economic starts in 8 cities

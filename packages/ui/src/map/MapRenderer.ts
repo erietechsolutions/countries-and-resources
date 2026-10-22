@@ -87,6 +87,8 @@ export class MapRenderer {
   private fitScale = 1;
   private selection: MapSelection = { provinceId: null, countryId: null, cityId: null };
   private hoverId: ProvinceId | null = null;
+  /** Regions that changed hands during play; outlined as borders. */
+  private changedProvinces: ProvinceId[] = [];
   private playerCityId: CityId | null = null;
   private showCityLabels = true;
   private showTowns = true;
@@ -143,6 +145,19 @@ export class MapRenderer {
       this.drawSelection();
       this.drawCities();
     }
+  }
+
+  /** Borders moved: outline the regions that changed hands and re-place country names. */
+  setTerritory(changed: ProvinceId[]): void {
+    this.changedProvinces = changed;
+    if (!this.ready) return;
+    for (const label of this.countryLabels) label.text.destroy();
+    this.countryLabels = [];
+    this.buildCountryLabels();
+    this.countryLabels.sort((a, b) => b.size - a.size);
+    this.lastLabelScale = 0;
+    this.updateLabels();
+    this.drawCountryBorders();
   }
 
   setPlayerCity(id: CityId | null): void {
@@ -371,6 +386,7 @@ export class MapRenderer {
   private drawCountryBorders(): void {
     const g = this.countryBorders.clear();
     strokeLines(g, this.geo.borders.country);
+    for (const id of this.changedProvinces) outlineProvince(g, this.geo, id);
     g.stroke({ color: 0x0b1118, alpha: 0.9, width: 1.4 / this.world.scale.x });
   }
 

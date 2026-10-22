@@ -23,6 +23,7 @@ export type SimEvent =
   | { type: "activityEnded"; activityId: string; reason: "finished" | "cancelled" | "interrupted" }
   /** A story event needs the player's decision. */
   | { type: "storyEvent"; eventId: string }
+  | { type: "playerDied" }
   | { type: "commandApplied"; command: Command }
   | { type: "commandRejected"; command: Command; reason: string };
 

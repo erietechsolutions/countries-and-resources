@@ -18,7 +18,8 @@ export type CrimeId =
   | "embezzlement"
   | "bribery"
   | "fraud"
-  | "publicDisorder";
+  | "publicDisorder"
+  | "insurrection";
 
 export const CRIME_LABELS: Record<CrimeId, string> = {
   shoplifting: "Shoplifting",
@@ -30,6 +31,7 @@ export const CRIME_LABELS: Record<CrimeId, string> = {
   bribery: "Bribery",
   fraud: "Fraud",
   publicDisorder: "Public disorder",
+  insurrection: "Armed insurrection",
 };
 
 /** Seriousness 1–5: drives sentences and scandal damage. */
@@ -43,6 +45,7 @@ export const CRIME_SEVERITY: Record<CrimeId, number> = {
   bribery: 3,
   fraud: 3,
   publicDisorder: 1,
+  insurrection: 5,
 };
 
 export interface Conviction {

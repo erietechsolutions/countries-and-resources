@@ -3,12 +3,13 @@ import {
   RESOURCE_LABELS,
   formatMoney,
   type Biome,
+  type ConflictState,
   type Resource,
   type WorldGeography,
   type WorldState,
 } from "@cr/sim";
 
-export type MapMode = "political" | "terrain" | "resources" | "wealth" | "stability";
+export type MapMode = "political" | "terrain" | "resources" | "wealth" | "stability" | "conflict";
 
 export const MAP_MODES: { id: MapMode; label: string; key: string }[] = [
   { id: "political", label: "Political", key: "Q" },
@@ -16,7 +17,34 @@ export const MAP_MODES: { id: MapMode; label: string; key: string }[] = [
   { id: "resources", label: "Resources", key: "E" },
   { id: "wealth", label: "Wealth", key: "R" },
   { id: "stability", label: "Stability", key: "T" },
+  { id: "conflict", label: "Conflict", key: "Y" },
 ];
+
+const CONFLICT_COLORS = {
+  peace: 0x4f5b69,
+  atWar: 0x8a4b45,
+  occupied: 0xd9452b,
+  militia: 0x9b59d0,
+  rebels: 0xe8a33d,
+};
+
+/** Who holds what in the world's wars and uprisings. */
+function conflictColors(geo: WorldGeography, conflict: ConflictState): Map<number, number> {
+  const colors = new Map<number, number>();
+  const fighting = new Set<string>();
+  for (const w of conflict.wars) {
+    if (w.status !== "active") continue;
+    for (const id of [...w.attackers, ...w.defenders]) fighting.add(id);
+    for (const id of Object.keys(w.occupied)) colors.set(Number(id), CONFLICT_COLORS.occupied);
+  }
+  for (const p of geo.provinces) {
+    if (!colors.has(p.id) && fighting.has(p.countryId)) colors.set(p.id, CONFLICT_COLORS.atWar);
+  }
+  for (const ins of conflict.insurgencies)
+    for (const id of ins.held) colors.set(id, CONFLICT_COLORS.rebels);
+  for (const h of conflict.militia?.held ?? []) colors.set(h.provinceId, CONFLICT_COLORS.militia);
+  return colors;
+}
 
 export const OCEAN = 0x0e1f2d;
 const UNINHABITED = 0xd9dee5;
@@ -72,7 +100,13 @@ const WEALTH_MIN = Math.log(500);
 const WEALTH_MAX = Math.log(80_000);
 
 /** The fill color of every province for a map mode, indexed by province id. */
-export function provinceColors(mode: MapMode, geo: WorldGeography, world: WorldState): number[] {
+export function provinceColors(
+  mode: MapMode,
+  geo: WorldGeography,
+  world: WorldState,
+  conflict?: ConflictState,
+): number[] {
+  const fronts = mode === "conflict" && conflict ? conflictColors(geo, conflict) : null;
   return geo.provinces.map((gp) => {
     const country = world.countries[gp.countryId];
     const province = world.provinces[gp.id];
@@ -96,6 +130,8 @@ export function provinceColors(mode: MapMode, geo: WorldGeography, world: WorldS
           : UNINHABITED;
       case "stability":
         return inhabited ? ramp(STABILITY_STOPS, province.stability / 100) : UNINHABITED;
+      case "conflict":
+        return inhabited ? (fronts?.get(gp.id) ?? CONFLICT_COLORS.peace) : UNINHABITED;
     }
   });
 }
@@ -134,6 +170,17 @@ export function legendFor(mode: MapMode): Legend {
       };
     case "stability":
       return { kind: "gradient", stops: STABILITY_STOPS, low: "Unstable", high: "Stable" };
+    case "conflict":
+      return {
+        kind: "swatches",
+        items: [
+          { color: CONFLICT_COLORS.atWar, label: "At war" },
+          { color: CONFLICT_COLORS.occupied, label: "Occupied" },
+          { color: CONFLICT_COLORS.rebels, label: "Held by rebels" },
+          { color: CONFLICT_COLORS.militia, label: "Held by your militia" },
+          { color: CONFLICT_COLORS.peace, label: "At peace" },
+        ],
+      };
   }
 }
 

@@ -16,6 +16,10 @@ import {
   type Relationship,
   type RelationshipKind,
   type SocialAction,
+  ageInYears,
+  formatDate,
+  healthCap,
+  parentAge,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
@@ -217,6 +221,54 @@ export function PeoplePanel() {
           </ul>
         )}
       </section>
+      <FamilyLineCard />
     </div>
+  );
+}
+
+/** Aging, parents and the generations played so far. */
+function FamilyLineCard() {
+  const { game } = useGameUi();
+  const p = game.state.player;
+  const { generation, ancestors } = game.state.dynasty;
+  const age = ageInYears(p.birthTime, game.time);
+  return (
+    <section className="card">
+      <h4 className="no-margin">
+        The {p.lastName} family{generation > 1 && ` · generation ${generation}`}
+      </h4>
+      <p className="muted small">
+        {age >= 45
+          ? `At ${age}, your health can reach at most ${healthCap(age)}. Look after yourself.`
+          : "You're young: your body recovers fully from almost anything."}{" "}
+        When you die, an adult child or your spouse can carry on.
+      </p>
+      {game.state.family.length > 0 && (
+        <ul className="gov-list">
+          {game.state.family.map((m) => (
+            <li key={m.id}>
+              <span>
+                {m.firstName} <span className="muted small">your {m.relation}</span>
+              </span>
+              <span className="small">{parentAge(game, m)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {ancestors.length > 0 && (
+        <ul className="gov-list">
+          {ancestors.map((a) => (
+            <li key={a.died}>
+              <span>
+                {a.name} <span className="muted small">gen. {a.generation}</span>
+              </span>
+              <span className="muted small">
+                {formatDate(a.born)} – {formatDate(a.died)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

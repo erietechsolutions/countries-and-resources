@@ -9,6 +9,7 @@ import {
   OCCUPATIONS,
   parseSave,
   Rng,
+  SAVE_VERSION,
   startOfDay,
   toDateParts,
   type Command,
@@ -355,7 +356,7 @@ describe("save migration", () => {
       state: v1,
     };
     const upgraded = parseSave(JSON.stringify(file));
-    expect(upgraded.version).toBe(3);
+    expect(upgraded.version).toBe(SAVE_VERSION);
     const loaded = new Game(upgraded.state, geo);
     expect(loaded.state.player.housing).toEqual({ kind: "homeless" });
     expect(loaded.state.player.needs.health).toBe(85);

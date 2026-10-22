@@ -70,6 +70,7 @@ function appointments(ctx: GameContext): void {
   const country = playerCountry(ctx);
   if (isDemocratic(country.government) || !p.citizenship.includes(country.id)) return;
   const held = playerOffices(ctx);
+  if (held.some((o) => o.kind === "headOfGovernment")) return;
   const loyal =
     country.government === "oneParty"
       ? p.politics.partyId === country.rulingPartyId

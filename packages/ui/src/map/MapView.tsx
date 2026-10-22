@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CityId, ProvinceId, WorldGeography, WorldState } from "@cr/sim";
+import type { CityId, ConflictState, ProvinceId, WorldGeography, WorldState } from "@cr/sim";
 import { useSettings } from "../storage/settings";
 import { MapRenderer, type MapSelection } from "./MapRenderer";
 import { hex, legendFor, MAP_MODES, provinceColors, type MapMode } from "./mapModes";
@@ -15,6 +15,9 @@ export interface FocusRequest {
 interface Props {
   geography: WorldGeography;
   world: WorldState;
+  conflict?: ConflictState;
+  /** Change this to recolor the map (world data changes in place). */
+  refreshKey?: number;
   selection: MapSelection;
   playerCityId?: CityId | null;
   focus?: FocusRequest | null;
@@ -25,6 +28,8 @@ interface Props {
 export function MapView({
   geography,
   world,
+  conflict,
+  refreshKey = 0,
   selection,
   playerCityId = null,
   focus,
@@ -57,11 +62,22 @@ export function MapView({
     };
   }, [geography]);
 
-  const colors = useMemo(() => provinceColors(mode, geography, world), [mode, geography, world]);
+  const colors = useMemo(
+    () => provinceColors(mode, geography, world, conflict),
+    // refreshKey stands in for changes inside world and conflict.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mode, geography, world, conflict, refreshKey],
+  );
 
   useEffect(() => {
     if (loaded) rendererRef.current?.setColors(colors);
   }, [loaded, colors]);
+
+  const territoryVersion = world.territoryVersion ?? 0;
+  useEffect(() => {
+    if (!loaded) return;
+    rendererRef.current?.setTerritory(Object.keys(world.provinceOwners ?? {}).map(Number));
+  }, [loaded, world, territoryVersion]);
 
   useEffect(() => {
     if (loaded) rendererRef.current?.setSelection(selection);
