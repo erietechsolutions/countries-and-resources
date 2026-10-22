@@ -1,6 +1,7 @@
 # Builds the desktop app for Linux and Windows.
-# Runs on version tags (v0.1.0, ...) or manually from the Actions tab; the installers are attached
-# to the run as artifacts (and to a draft GitHub release for tags).
+# Runs on version tags (v0.2.0, ...) or manually from the Actions tab. The installers are attached
+# to the run as artifacts, and for tags to a published GitHub release that the in-app updater reads.
+# The tag must match the version in package.json.
 name: Desktop builds
 
 on:
@@ -54,15 +55,21 @@ jobs:
 
       - run: npm ci
 
+      # Signs the update bundles and attaches latest.json, which installed apps check for updates.
+      # Tagged builds publish the release right away so the update reaches players.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tauriScript: npx tauri
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: Countries & Resources ${{ github.ref_name }}
-          releaseDraft: true
+          releaseBody: See the assets below. Installed copies update themselves from the main menu.
+          releaseDraft: false
+          includeUpdaterJson: true
 
       - uses: actions/upload-artifact@v4
         with:

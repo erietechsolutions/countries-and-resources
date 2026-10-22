@@ -39,10 +39,32 @@ npm run desktop:build   # build installers (.rpm, .deb, .AppImage) into
                         # apps/desktop/src-tauri/target/release/bundle/
 ```
 
+**On CachyOS / Arch** the one-time setup is
+`sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl librsvg libappindicator-gtk3 xdotool patchelf rustup nodejs-lts-krypton npm`
+followed by `rustup default stable`.
+
 **Windows installers** have to be built on Windows. Either run `npm run desktop:build` on a
 Windows PC (with Rust and Node installed), or push the project to GitHub and let
 `.github/workflows/desktop.yml` build Linux and Windows installers automatically (run it from the
 Actions tab, or push a tag like `v0.2.0`).
+
+## Releases and updates
+
+Releases are built by GitHub Actions and published on the repository's Releases page: a Linux
+AppImage (plus .deb and .rpm) and Windows installers. Installed copies check that page from the
+main menu and offer to update themselves. Updates are signed, so only builds made with the
+project's private key are accepted.
+
+To publish a new version:
+
+1. Bump `version` in the root `package.json` (the desktop app reads it from there), then run
+   `npm install` so the lockfile matches.
+2. Commit, then tag and push: `git tag v0.3.0 && git push origin main v0.3.0`.
+3. The **Desktop builds** workflow builds, signs and publishes the release (about 15 minutes).
+
+The workflow needs two repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (the contents of
+`~/.tauri/countries-and-resources.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty). Keep a
+backup of that key: without it, existing installs can't receive updates.
 
 ## Development
 
@@ -53,6 +75,7 @@ npm run lint
 npm run geodata    # rebuild data/geography/real-world.json from Natural Earth
 npm run balance    # bots play 180 days in 8 cities; prints a difficulty report
 npx tsx tools/sim/politicsCareer.ts 6   # bots try a 6-year political career
+npx tsx tools/sim/worldHistory.ts 15    # the AI world runs 15 years: wars, uprisings, new countries
 ```
 
 ## Project layout

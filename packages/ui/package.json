@@ -1,7 +1,7 @@
 {
   "name": "@cr/ui",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,8 @@
   "dependencies": {
     "@cr/sim": "*",
     "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.0",
     "pixi.js": "^8.22.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
