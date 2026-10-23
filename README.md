@@ -1,9 +1,10 @@
 # Countries & Resources
 
-A single-player (multiplayer planned) life simulation and nation-building game. You start as an
-18-year-old with little or nothing and rise through work, business, politics or revolution,
-eventually founding and running your own country. Or play Leader mode: start as the head of
-government of any country and try to stay in power.
+A single-player (multiplayer planned) economic life simulation and nation-building game. You
+start as an 18-year-old with little or nothing and build wealth through work, business,
+investing and property, or power through politics or revolution, eventually founding and running
+your own country. Or play Leader mode: start as the head of government of any country, run its
+budget, economy, armed forces and diplomacy, and try to stay in power.
 
 Runs in the browser, or as a desktop app for Linux and Windows (built with Tauri).
 

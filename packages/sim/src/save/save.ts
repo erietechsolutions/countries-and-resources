@@ -12,7 +12,7 @@ import type { WorldGeography } from "../world/geography";
 
 export const SAVE_FORMAT = "countries-and-resources-save";
 /** Bump when GameState changes shape, and add a migration from the previous version. */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** Shown in the load-game list without parsing the whole state. */
 export interface SaveSummary {
@@ -46,6 +46,9 @@ const MIGRATIONS: Record<number, (state: unknown) => unknown> = {
   2: (state) => state,
   // Version 4 (Phase 5) only added data: conflict, dynasty and territory changes.
   3: (state) => state,
+  // Version 5 (0.3.0): lifestyles, wealth, markets, Leader mode and statecraft. All added data,
+  // filled in on load; the third gender option is mapped to male or female there too.
+  4: (state) => state,
 };
 
 /**

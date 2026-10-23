@@ -82,10 +82,17 @@ Each milestone ends with something playable.
       Government, Politics, Military and Region tabs; approval from how the country does;
       re-elections, lost majorities, revolutions and conquest end the rule, with a record of
       your time in office
-- [ ] **Country strategy in depth**: budget allocation, debt and bonds, big projects, trade,
-      armed forces, generals and coups, fronts, intelligence (both modes)
-- [ ] **Economy-focused life**: living standards instead of needs, weekly time budgets,
-      investing, real estate, commodities
+- [x] **Country strategy in depth** (any head of government): budget priorities, credit
+      ratings, debt interest and defaults, big projects, nationalization and tariffs; armor, air
+      force, navy, conscription, research and generals with coups; war goals, stances and
+      objectives, ceasefires, naval landings, forts and occupation resistance; non-aggression
+      pacts, trade deals, sanctions, foreign aid and spy operations; Military map mode
+- [x] **Economy-focused life**: living standards replace eating, sleeping and washing; nights
+      pass on their own; savings, offshore accounts, stocks, government bonds and commodities on
+      world markets; real estate with mortgages and tenants; party donations, lobbying and media
+      outlets; supply chains, government contracts and stock market listings for businesses; net
+      worth and a rich list
+- [x] Character creation offers male and female
 - [ ] **M21 – Normal mode** (US data for 2022 and 2024, 50 states)
 - [ ] **M22 – Modding support**
 - [ ] **M23 – Multiplayer foundations**

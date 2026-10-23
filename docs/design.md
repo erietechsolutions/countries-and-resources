@@ -61,6 +61,43 @@ when the player no longer holds the office: a lost presidential election, a lost
 revolution, conquest, or death without a hereditary successor. `state.reign` records the
 country's vital signs at the start, and the game shows the record against them.
 
+## Living standards (0.3.0)
+
+Daily survival is gone. The player picks a lifestyle (frugal, modest, comfortable, luxury) whose
+daily cost is a multiple of local living costs (less at a parent's house or without a home).
+It sets the health the player drifts toward (capped by age), their presentation (stored as
+`needs.hygiene`, which employers check) and a happiness bonus. If money runs out the lifestyle
+steps down, and below frugal the player "goes without" for the day, which hurts health,
+presentation and mood. Food and energy are fixed. Nights start automatically at 11 PM when the
+player is idle; work shifts and anything the player starts interrupt them. Critical health
+(under 5) means hospital.
+
+## Wealth (0.3.0)
+
+`wealth/markets.ts` keeps a stock index per country (monthly returns from growth, the
+business cycle, war and stability, with more volatility in poorer countries), commodity prices
+(mean-reverting, with war shocks for energy and gold) and a rich list generated from the world
+seed. `wealth/wealth.ts` holds the player's savings, offshore money, holdings, properties and
+media outlets. Units of stocks and commodities are priced at $100 × the index or price level;
+bonds pay their country's yield (inflation plus a risk premium) and can default. Gains are taxed
+at half the income tax rate when sold. Property values follow city rents; a property is worth
+about ten years of its rent, and rents out for about 1/160 of its value a month. Influence
+spending works through existing systems: donations shift party popularity, lobbying calls
+`createBill` with an NPC sponsor, and media outlets nudge a party's support each month.
+
+## Statecraft (0.3.0)
+
+`statecraft/statecraft.ts` adds the levers a head of government pulls directly, beyond laws.
+A country's `statecraft` record is created only when its leader first changes something (or it
+defaults), so AI countries run on normal settings, and the UI reads defaults through
+`readStatecraft` without creating anything. Every army is created when a game loads for the same
+reason: looking at a country must never change the simulation. Spending above normal and project
+installments go into `runBudget`; interest follows a credit rating once a country has a
+statecraft record. A country defaults when interest exceeds 35% of revenue (debt halved, five
+years of recovery). Army power counts infantry, armor (×20), aircraft (×60), technology and the
+best general. Landings across the sea need warships. Each month, disloyal generals in an unstable
+country may stage a coup; unstable AI autocracies also see occasional coups.
+
 ## Economic-mode world generation
 
 On the real map, only geography comes from real data: borders, latitude, coastlines, and city
@@ -81,6 +118,8 @@ positions with their relative sizes. Everything economic and political is genera
 
 ## Saves
 
+- Character creation offers male and female. Saves holding the former third option map it to
+  one of the two, decided by a hash of the character's id.
 - Saves are stored in IndexedDB (browser or desktop webview), with a metadata store and a data
   store kept separate. They can be exported and imported as `.crsave.json` files.
 - Every save carries a `version`. When `GameState` changes shape, bump `SAVE_VERSION` and add a
