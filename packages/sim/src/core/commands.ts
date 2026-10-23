@@ -66,10 +66,12 @@ import type { ItemId } from "../life/items";
 import { castVote, proposeBill, signBill } from "../politics/bills";
 import { fileCandidacy, spendOnAds, withdrawCandidacy } from "../politics/elections";
 import { foundParty, joinParty, leaveParty } from "../politics/party";
+import { promoteParty } from "../politics/grassroots";
 import { applyForVisa, moveTo, naturalize, type VisaType } from "../life/moving";
 import { buyItem, dropCourse, enroll, sellItem } from "../life/shopping";
 import type { UnitType } from "../life/types";
 import { performSocialAction, type SocialAction } from "../social/social";
+import { buyPremium, joinDating, leaveDating, swipe, type Seeking } from "../social/dating";
 import { acceptOffer, leaveJob } from "../work/jobs";
 import type { Sector } from "../work/occupations";
 import type { GameContext } from "./game";
@@ -83,6 +85,10 @@ export type Command =
   | { type: "debug.grantCash"; amountCents: number }
   | { type: "activity.start"; activityId: string; amount?: number; targetId?: string }
   | { type: "social.action"; personId: string; action: SocialAction }
+  | { type: "dating.join"; seeking: Seeking }
+  | { type: "dating.leave" }
+  | { type: "dating.premium" }
+  | { type: "dating.swipe"; profileId: string; like: boolean }
   | { type: "business.found"; name: string; sector: Sector; capitalCents: number }
   | { type: "business.staff"; businessId: string; employees: number }
   | {
@@ -108,6 +114,7 @@ export type Command =
   | { type: "politics.file"; electionId: string }
   | { type: "politics.withdraw" }
   | { type: "politics.ads"; amountCents: number }
+  | { type: "party.promote"; amountCents: number }
   | { type: "politics.propose"; officeId: string; policyId: string; direction: 1 | -1 }
   | { type: "politics.vote"; billId: string; vote: "yes" | "no" }
   | { type: "politics.sign"; billId: string; sign: boolean }
@@ -192,6 +199,10 @@ export const commandHandlers: CommandHandlers = {
   "activity.start": (ctx, cmd) =>
     alive(ctx) ?? startActivity(ctx, cmd.activityId, cmd.amount, cmd.targetId),
   "social.action": (ctx, cmd) => alive(ctx) ?? performSocialAction(ctx, cmd.personId, cmd.action),
+  "dating.join": (ctx, cmd) => alive(ctx) ?? joinDating(ctx, cmd.seeking),
+  "dating.leave": (ctx) => leaveDating(ctx),
+  "dating.premium": (ctx) => alive(ctx) ?? buyPremium(ctx),
+  "dating.swipe": (ctx, cmd) => alive(ctx) ?? swipe(ctx, cmd.profileId, cmd.like),
   "business.found": (ctx, cmd) =>
     alive(ctx) ?? foundBusiness(ctx, cmd.name, cmd.sector, cmd.capitalCents),
   "business.staff": (ctx, cmd) => setStaff(ctx, cmd.businessId, cmd.employees),
@@ -216,6 +227,7 @@ export const commandHandlers: CommandHandlers = {
   "politics.file": (ctx, cmd) => alive(ctx) ?? fileCandidacy(ctx, cmd.electionId),
   "politics.withdraw": (ctx) => withdrawCandidacy(ctx),
   "politics.ads": (ctx, cmd) => spendOnAds(ctx, cmd.amountCents),
+  "party.promote": (ctx, cmd) => alive(ctx) ?? promoteParty(ctx, cmd.amountCents),
   "politics.propose": (ctx, cmd) =>
     alive(ctx) ?? proposeBill(ctx, cmd.officeId, cmd.policyId, cmd.direction),
   "politics.vote": (ctx, cmd) => castVote(ctx, cmd.billId, cmd.vote),

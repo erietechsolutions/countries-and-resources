@@ -57,3 +57,5 @@ export * from "./wealth/types";
 export * from "./wealth/markets";
 export * from "./wealth/wealth";
 export * from "./statecraft/statecraft";
+export * from "./politics/grassroots";
+export * from "./social/dating";

@@ -4,6 +4,7 @@ import type { System } from "../core/systems";
 import { transact } from "../finance/finance";
 import { adjustReputation } from "../social/social";
 import { npcProposals, resolveBills } from "./bills";
+import { grassrootsMonth } from "./grassroots";
 import { runElections, scheduleElections } from "./elections";
 import { ensurePolitics, isDemocratic, playerOffices, runBudget } from "./government";
 import { playerCountry, promoteInParty } from "./party";
@@ -147,6 +148,7 @@ export const politicsSystem: System = {
     promoteInParty(ctx);
     appointments(ctx);
     npcProposals(ctx);
+    grassrootsMonth(ctx);
     driftPopularity(ctx);
     worldElections(ctx);
     for (const country of Object.values(ctx.state.world.countries)) runBudget(country);

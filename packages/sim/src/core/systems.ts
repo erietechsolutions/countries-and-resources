@@ -18,6 +18,7 @@ import { MODES } from "../modes/modes";
 import { storySystem } from "../events/storyEvents";
 import { politicsSystem } from "../politics/system";
 import { socialSystem } from "../social/social";
+import { datingSystem } from "../social/dating";
 import { jobsSystem } from "../work/jobs";
 import { ageInYears, type DateParts, toDateParts } from "./calendar";
 import type { GameContext } from "./game";
@@ -65,6 +66,7 @@ export const defaultSystems: readonly System[] = [
   familySystem,
   immigrationSystem,
   socialSystem,
+  datingSystem,
   businessSystem,
   politicsSystem,
   crimeSystem,
@@ -89,6 +91,7 @@ const LIFE_SYSTEMS = new Set<System>([
   familySystem,
   immigrationSystem,
   socialSystem,
+  datingSystem,
   businessSystem,
   crimeSystem,
   storySystem,

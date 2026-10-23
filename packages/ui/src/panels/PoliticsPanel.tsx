@@ -21,6 +21,12 @@ import {
   pollShare,
   RANK_STANDING,
   RANK_TITLES,
+  FILING_SUPPORT,
+  flyerMinimum,
+  homeLocalities,
+  localSupport,
+  RALLY_SUPPORT,
+  TOWN_HALL_SUPPORT,
   type Ideology,
   type Office,
   type Party,
@@ -68,6 +74,62 @@ function ActivityButton({ id, label }: { id: string; label: string }) {
   );
 }
 
+/** Local support for the player's party, and the ways to grow it. */
+function GrassrootsSection() {
+  const { game, act } = useGameUi();
+  const party = playerParty(game);
+  const [amount, setAmount] = useState("");
+  if (!party) return null;
+  const { city, region } = homeLocalities(game);
+  const here = localSupport(game, city, party);
+  const regional = localSupport(game, region, party);
+  const cityName = game.geography.cities[city.id]!.name;
+  const regionName = game.geography.provinces[region.id]!.name;
+  const meter = (label: string, v: number) => (
+    <Meter
+      label={label}
+      value={Math.min(10, v * 100)}
+      max={10}
+      display={formatPercent(v, 1)}
+      tone={v >= FILING_SUPPORT ? "accent" : "neutral"}
+      compact
+    />
+  );
+  return (
+    <>
+      <h4>Grassroots</h4>
+      {meter(`Support in ${cityName}`, here)}
+      {meter(`Support in ${regionName}`, regional)}
+      <p className="muted small">
+        Rallies draw crowds from {formatPercent(RALLY_SUPPORT, 0)} local support and town halls from{" "}
+        {formatPercent(TOWN_HALL_SUPPORT, 0)}. Your party can run for city offices at{" "}
+        {formatPercent(FILING_SUPPORT, 0)} support in the city, and regional ones at{" "}
+        {formatPercent(FILING_SUPPORT, 0)} in the region. Support fades without work.
+      </p>
+      <div className="row wrap">
+        <ActivityButton id="partyWork" label="Volunteer for the party" />
+        <ActivityButton id="partyRally" label="Hold a rally" />
+        <ActivityButton id="townHall" label="Host a town hall" />
+      </div>
+      <div className="row wrap">
+        <input
+          className="input small-input"
+          placeholder="$"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          aria-label="Campaign budget"
+        />
+        <button
+          className="btn small"
+          onClick={() => act({ type: "party.promote", amountCents: toCents(amount) })}
+        >
+          Flyers and ads (from {formatMoney(flyerMinimum(game), true)}, weekly)
+        </button>
+      </div>
+    </>
+  );
+}
+
 function PartyCard() {
   const { game, act } = useGameUi();
   const p = game.state.player;
@@ -100,8 +162,8 @@ function PartyCard() {
             compact
           />
         )}
+        <GrassrootsSection />
         <div className="row">
-          <ActivityButton id="partyWork" label="Volunteer for the party" />
           <button className="btn small" onClick={() => act({ type: "politics.leave" })}>
             Leave party
           </button>

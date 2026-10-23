@@ -113,6 +113,8 @@ export interface PoliticsState {
   /** Cities whose city and regional offices have been set up. */
   setUpCities: CityId[];
   setUpCountries: CountryId[];
+  /** Support parties have built in cities and regions ("city:12|party" -> share of voters). */
+  localSupport?: Record<string, number>;
   nextId: number;
 }
 

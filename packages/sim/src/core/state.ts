@@ -7,6 +7,7 @@ import type { StoryState } from "../events/storyEvents";
 import type { DynastyState, PendingSuccession } from "../life/aging";
 import type { Reign } from "../leader/leader";
 import type { MarketsState, WealthState } from "../wealth/types";
+import type { DatingState } from "../social/dating";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
@@ -42,6 +43,8 @@ export interface GameState {
   wealth: WealthState;
   /** Stock indexes, commodity prices and the rich list. */
   markets: MarketsState;
+  /** The player's dating app. */
+  dating: DatingState;
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

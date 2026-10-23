@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   activityBlocker,
   activityById,
@@ -13,6 +14,13 @@ import {
   reconcileCost,
   RIVAL_LABELS,
   TRAIT_LABELS,
+  DATING_APP,
+  formatPercent,
+  matchChance,
+  premiumCost,
+  SEEKING_LABELS,
+  type Gender,
+  type Seeking,
   type Relationship,
   type RelationshipKind,
   type SocialAction,
@@ -55,6 +63,12 @@ function actionsFor(r: Relationship): SocialAction[] {
   }
 }
 
+/** "Man", "Woman", "Boy" or "Girl": shown next to every name so it's clear who's who. */
+export function genderLabel(gender: Gender, age: number): string {
+  if (age < 18) return gender === "male" ? "Boy" : "Girl";
+  return gender === "male" ? "Man" : "Woman";
+}
+
 function PersonCard({ r }: { r: Relationship }) {
   const { game, act } = useGameUi();
   const person = personById(game, r.personId);
@@ -68,10 +82,12 @@ function PersonCard({ r }: { r: Relationship }) {
           <strong>
             {person.firstName} {person.lastName}
           </strong>{" "}
+          <span className="muted small">
+            {genderLabel(person.gender, personAge(game, person))}, {personAge(game, person)}
+          </span>{" "}
           <span className="tag danger-tag">{RIVAL_LABELS[rival.kind]}</span>
           <div className="muted small">
-            {personAge(game, person)} · {person.occupation} ·{" "}
-            {person.traits.map((t) => TRAIT_LABELS[t]).join(", ")}
+            {person.occupation} · {person.traits.map((t) => TRAIT_LABELS[t]).join(", ")}
           </div>
         </div>
         <Meter label="Hostility" value={rival.hostility} compact tone="neutral" />
@@ -100,10 +116,13 @@ function PersonCard({ r }: { r: Relationship }) {
           <strong>
             {person.firstName} {person.lastName}
           </strong>{" "}
+          <span className="muted small">
+            {genderLabel(person.gender, personAge(game, person))}, {personAge(game, person)}
+          </span>{" "}
           <span className="tag">{RELATIONSHIP_LABELS[r.kind]}</span>
           <div className="muted small">
-            {personAge(game, person)} · {person.occupation} ·{" "}
-            {person.traits.map((t) => TRAIT_LABELS[t]).join(", ")} · met {r.context}
+            {person.occupation} · {person.traits.map((t) => TRAIT_LABELS[t]).join(", ")} · met{" "}
+            {r.context}
           </div>
         </div>
       </div>
@@ -221,6 +240,7 @@ export function PeoplePanel() {
           </ul>
         )}
       </section>
+      <DatingCard />
       <FamilyLineCard />
     </div>
   );
@@ -269,6 +289,109 @@ function FamilyLineCard() {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** Spark, the dating app: like or pass on today's profiles; matches show up as people above. */
+function DatingCard() {
+  const { game, act } = useGameUi();
+  const d = game.state.dating;
+  const [seeking, setSeeking] = useState<Seeking>(d.seeking);
+  const premium = (d.premiumUntil ?? 0) > game.time;
+  if (!d.active) {
+    const hasPhone = game.state.player.inventory.items.includes("phone");
+    return (
+      <section className="card">
+        <h4 className="no-margin">{DATING_APP}</h4>
+        <p className="muted small">
+          The dating app everyone's on. New profiles every morning; match and ask them out.
+          {!hasPhone && " You'll need a phone first (Home tab)."}
+        </p>
+        <div className="row wrap">
+          <span className="small">Looking for</span>
+          {(Object.keys(SEEKING_LABELS) as Seeking[]).map((x) => (
+            <button
+              key={x}
+              className={seeking === x ? "chip active" : "chip"}
+              onClick={() => setSeeking(x)}
+            >
+              {SEEKING_LABELS[x]}
+            </button>
+          ))}
+          <button
+            className="btn small"
+            disabled={!hasPhone}
+            onClick={() => act({ type: "dating.join", seeking })}
+          >
+            Make a profile
+          </button>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="card">
+      <div className="row between">
+        <h4 className="no-margin">
+          {DATING_APP}
+          {premium && <span className="tag">Premium</span>}
+        </h4>
+        <span className="muted small">
+          Looking for {SEEKING_LABELS[d.seeking].toLowerCase()} · {d.matches} match
+          {d.matches === 1 ? "" : "es"}
+        </span>
+      </div>
+      {d.profiles.length === 0 ? (
+        <p className="muted small">That's everyone for today. New profiles tomorrow.</p>
+      ) : (
+        <ul className="person-list">
+          {d.profiles.map((x) => (
+            <li key={x.id} className="person-card">
+              <div className="row between">
+                <div>
+                  <strong>{x.firstName}</strong>{" "}
+                  <span className="muted small">
+                    {genderLabel(x.gender, x.age)}, {x.age}
+                  </span>
+                  <div className="muted small">
+                    {x.occupation} · {x.traits.map((t) => TRAIT_LABELS[t]).join(", ")}
+                  </div>
+                  <div className="small">"{x.bio}"</div>
+                </div>
+                <div className="row">
+                  <button
+                    className="btn small"
+                    onClick={() => act({ type: "dating.swipe", profileId: x.id, like: false })}
+                  >
+                    Pass
+                  </button>
+                  <button
+                    className="btn small primary"
+                    title={`About a ${formatPercent(matchChance(game, x), 0)} chance they like you back`}
+                    onClick={() => act({ type: "dating.swipe", profileId: x.id, like: true })}
+                  >
+                    Like
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="row wrap">
+        {!premium && (
+          <button className="btn small" onClick={() => act({ type: "dating.premium" })}>
+            Get Premium ({formatMoney(premiumCost(game), true)}/month)
+          </button>
+        )}
+        <button className="btn small" onClick={() => act({ type: "dating.leave" })}>
+          Delete profile
+        </button>
+      </div>
+      <p className="muted small">
+        Looking good, being happy and doing well all help. Matches appear in your list above.
+      </p>
     </section>
   );
 }

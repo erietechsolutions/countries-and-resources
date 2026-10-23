@@ -1,3 +1,4 @@
+import { FILING_SUPPORT, localBoost, localSupport } from "./grassroots";
 import { addDays, ageInYears, type GameTime } from "../core/calendar";
 import type { GameContext } from "../core/game";
 import { hashString } from "../core/rng";
@@ -96,6 +97,18 @@ export function filingBlocker(ctx: GameContext, election: Election): string | nu
     return "Seats are won on party lists: join a party first.";
   if (party) {
     if (!party.legal) return "Your party is banned from elections.";
+    // Local voters only back a party that has a real presence where they live.
+    const where =
+      office.level === "city" && office.cityId !== undefined
+        ? ({ level: "city", id: office.cityId } as const)
+        : office.level === "region" && office.provinceId !== undefined
+          ? ({ level: "region", id: office.provinceId } as const)
+          : null;
+    if (where) {
+      const support = localSupport(ctx, where, party);
+      if (support < FILING_SUPPORT)
+        return `Your party needs ${formatPercent(FILING_SUPPORT, 0)} support here to field candidates (now ${formatPercent(support, 1)}). Volunteer, rally and campaign to grow it.`;
+    }
     if (p.politics.rank < req.rank)
       return `Your party nominates members ranked ${req.rank}+ for this office.`;
   } else if (p.reputation.fame < req.independentFame) {
@@ -151,9 +164,16 @@ export function spendOnAds(ctx: GameContext, amountCents: number): string | null
 // Vote model
 
 /** Local strength of a party: national popularity with a stable regional lean. */
-function localStrength(party: Party, office: Office): number {
+/** A party's pull in the area an office covers: national support, local lean, local work. */
+function localStrength(ctx: GameContext, party: Party, office: Office): number {
   const lean = ((hashString(`${party.id}|${officeScope(office)}`) % 1000) / 1000 - 0.5) * 0.6;
-  return Math.max(0.002, party.popularity * (1 + lean));
+  const built =
+    office.level === "city" && office.cityId !== undefined
+      ? localBoost(ctx, { level: "city", id: office.cityId }, party.id)
+      : office.level === "region" && office.provinceId !== undefined
+        ? localBoost(ctx, { level: "region", id: office.provinceId }, party.id)
+        : 0;
+  return Math.max(0.002, party.popularity * (1 + lean) + built);
 }
 
 /** The player's personal pull with voters, from reputation, fame and campaign effort. */
@@ -182,7 +202,7 @@ export function playerAppeal(ctx: GameContext, office: Office): number {
 function candidateScore(ctx: GameContext, office: Office, c: Candidate, slate = 1): number {
   const country = countryOf(ctx, office);
   const party = c.partyId ? country.parties.find((p) => p.id === c.partyId) : undefined;
-  const base = (party ? localStrength(party, office) : 0.04) / slate;
+  const base = (party ? localStrength(ctx, party, office) : 0.04) / slate;
   const appeal =
     c.id === "player" ? playerAppeal(ctx, office) : c.appeal + rivalCandidateAppeal(ctx, c.id);
   return base * Math.max(0.2, 1 + appeal) * (c.incumbent ? 1.12 : 1);
@@ -324,7 +344,7 @@ function resolveElection(ctx: GameContext, election: Election): void {
     const playerPartyId = playerRunning ? playerParty(ctx)?.id : undefined;
     const scores = parties.map(
       (p) =>
-        localStrength(p, office) *
+        localStrength(ctx, p, office) *
         ctx.rng.float(0.88, 1.12) *
         (p.id === playerPartyId ? 1 + playerAppeal(ctx, office) * 0.15 : 1),
     );

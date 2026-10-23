@@ -1,6 +1,13 @@
 import { businessById } from "../business/business";
 import { commitCrime, CRIME_RISK } from "../crime/crime";
 import { localPolicy } from "../politics/policies";
+import {
+  eventBlocker,
+  growSupport,
+  holdEvent,
+  RALLY_SUPPORT,
+  TOWN_HALL_SUPPORT,
+} from "../politics/grassroots";
 import { canWorkLegally } from "./moving";
 import { newDailyFlags } from "../character/character";
 import { startOfDay, toDateParts } from "../core/calendar";
@@ -504,6 +511,8 @@ export const ACTIVITIES: ActivityDef[] = [
       // Party bosses notice steady commitment, not marathon days: standing counts once a day.
       const p = ctx.state.player;
       const today = startOfDay(ctx.state.time);
+      // Door-knocking wins the party local supporters; a second shift the same day helps less.
+      growSupport(ctx, p.cooldowns.partyWork === today ? 0.0002 : 0.0004);
       if (p.cooldowns.partyWork !== today) {
         p.cooldowns.partyWork = today;
         p.politics.standing += 3;
@@ -511,6 +520,49 @@ export const ACTIVITIES: ActivityDef[] = [
       adjustReputation(ctx, "activists", 0.5);
       addXp(ctx, { sales: 0.3, management: 0.2 });
     },
+  },
+  {
+    id: "partyRally",
+    label: "Hold a rally",
+    category: "growth",
+    description: `Fill a square with supporters and speeches. Needs ${RALLY_SUPPORT * 100}% local support for your party; once a week.`,
+    interruptible: false,
+    hours: () => 4,
+    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).medianWageCents * 30,
+    unavailable: all(
+      during(12, 20),
+      (ctx) =>
+        eventBlocker(ctx, RALLY_SUPPORT) ??
+        ((ctx.state.player.cooldowns.partyRally ?? 0) > ctx.state.time
+          ? "You held a rally this week."
+          : null),
+    ),
+    effects: () => ({ happiness: 2 }),
+    onStart: (ctx) => {
+      ctx.state.player.cooldowns.partyRally = ctx.state.time + 7 * 24;
+    },
+    onFinish: (ctx) => holdEvent(ctx, "rally"),
+  },
+  {
+    id: "townHall",
+    label: "Host a town hall",
+    category: "growth",
+    description: `Take questions from local residents. Needs ${TOWN_HALL_SUPPORT * 100}% local support; once a week. Builds community standing.`,
+    interruptible: false,
+    hours: () => 3,
+    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).medianWageCents * 10,
+    unavailable: all(
+      during(17, 21),
+      (ctx) =>
+        eventBlocker(ctx, TOWN_HALL_SUPPORT) ??
+        ((ctx.state.player.cooldowns.townHall ?? 0) > ctx.state.time
+          ? "You held a town hall this week."
+          : null),
+    ),
+    onStart: (ctx) => {
+      ctx.state.player.cooldowns.townHall = ctx.state.time + 7 * 24;
+    },
+    onFinish: (ctx) => holdEvent(ctx, "townHall"),
   },
   {
     id: "campaign",
