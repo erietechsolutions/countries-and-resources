@@ -21,6 +21,7 @@ import {
   pollShare,
   RANK_STANDING,
   RANK_TITLES,
+  CAMPAIGN_HOURS,
   FILING_SUPPORT,
   flyerMinimum,
   homeLocalities,
@@ -91,7 +92,7 @@ function GrassrootsSection() {
       value={Math.min(10, v * 100)}
       max={10}
       display={formatPercent(v, 1)}
-      tone={v >= FILING_SUPPORT ? "accent" : "neutral"}
+      tone={v >= FILING_SUPPORT.city ? "accent" : "neutral"}
       compact
     />
   );
@@ -102,9 +103,11 @@ function GrassrootsSection() {
       {meter(`Support in ${regionName}`, regional)}
       <p className="muted small">
         Rallies draw crowds from {formatPercent(RALLY_SUPPORT, 0)} local support and town halls from{" "}
-        {formatPercent(TOWN_HALL_SUPPORT, 0)}. Your party can run for city offices at{" "}
-        {formatPercent(FILING_SUPPORT, 0)} support in the city, and regional ones at{" "}
-        {formatPercent(FILING_SUPPORT, 0)} in the region. Support fades without work.
+        {formatPercent(TOWN_HALL_SUPPORT, 0)}. Your party can field candidates for city offices at{" "}
+        {formatPercent(FILING_SUPPORT.city, 0)} support in the city, regional offices at{" "}
+        {formatPercent(FILING_SUPPORT.region, 0)} in the region, and national offices at{" "}
+        {formatPercent(FILING_SUPPORT.national, 0)} nationally (now{" "}
+        {formatPercent(party.popularity, 1)}). Support fades without work.
       </p>
       <div className="row wrap">
         <ActivityButton id="partyWork" label="Volunteer for the party" />
@@ -375,9 +378,23 @@ function ElectionsCard() {
             tone="accent"
             compact
           />
+          {(() => {
+            const level = game.state.politics.offices.find((o) => o.id === running.officeId)?.level;
+            const needed = level ? CAMPAIGN_HOURS[level] : 0;
+            return (
+              <Meter
+                label={`Campaign hours (at least ${needed} or you're off the ballot)`}
+                value={Math.min(needed, candidacy.effort)}
+                max={Math.max(1, needed)}
+                display={`${Math.floor(candidacy.effort)}/${needed}`}
+                tone={candidacy.effort >= needed ? "accent" : "auto"}
+                compact
+              />
+            );
+          })()}
           <p className="muted small">
-            Campaign hours: {candidacy.effort} · funds {formatMoney(candidacy.fundsCents, true)} ·
-            ads bought {formatMoney(candidacy.spentCents, true)}
+            Funds {formatMoney(candidacy.fundsCents, true)} · ads bought{" "}
+            {formatMoney(candidacy.spentCents, true)}
           </p>
           <div className="row">
             <ActivityButton id="campaign" label="Campaign" />

@@ -7,16 +7,25 @@ import { formatMoney, formatPercent } from "../world/format";
 import type { CityId, ProvinceId } from "../world/geography";
 import type { Party } from "../world/types";
 import { playerParty } from "./party";
+import type { OfficeLevel } from "./types";
 
 /**
  * Parties grow from the ground up. On top of its national support, a party can build support in
  * a city and its region through volunteering, flyers, rallies and town halls. Small parties need
- * this to be taken seriously: rallies draw crowds from 3% local support, and a party needs 8%
- * locally before voters there will back its candidates for local office.
+ * this to be taken seriously: rallies draw crowds from 3% local support, and a party needs real
+ * support where an office is before voters will back its candidates: 8% in a city, 12% in a
+ * region, 25% nationally.
  */
 export const RALLY_SUPPORT = 0.03;
 export const TOWN_HALL_SUPPORT = 0.05;
-export const FILING_SUPPORT = 0.08;
+export const FILING_SUPPORT: Record<OfficeLevel, number> = {
+  city: 0.08,
+  region: 0.12,
+  national: 0.25,
+};
+
+/** Campaign hours a candidate must put in before election day, or be dropped from the ballot. */
+export const CAMPAIGN_HOURS: Record<OfficeLevel, number> = { city: 20, region: 40, national: 80 };
 
 export type Locality = { level: "city"; id: CityId } | { level: "region"; id: ProvinceId };
 

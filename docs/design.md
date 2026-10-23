@@ -98,6 +98,21 @@ years of recovery). Army power counts infantry, armor (×20), aircraft (×60), t
 best general. Landings across the sea need warships. Each month, disloyal generals in an unstable
 country may stage a coup; unstable AI autocracies also see occasional coups.
 
+## Grassroots politics and dating (0.3.1)
+
+- A party's support in a city or region is its national popularity plus support built there
+  (`politics.localSupport`, keyed "city:12|party"). Volunteering, ad campaigns, rallies and town
+  halls add to the player's city, and 40% as much to its region. Gains shrink as support grows
+  (no gain left near 25%), the built support fades 6% a month, and it nudges national popularity.
+  Built support also counts in city and regional elections.
+- To field candidates, a party needs 8% support in the city (city offices), 12% in the region
+  (regional offices) or 25% nationally (national offices). Sitting officeholders seeking
+  re-election are exempt. A candidate must campaign 20, 40 or 80 hours by election day (city,
+  region, national) or is dropped from the ballot, with a warning two weeks before.
+- Spark (`social/dating.ts`) offers fresh profiles each morning (5, or 12 with Premium). A like
+  becomes a match with a chance based on presentation, happiness, fame, a job, lifestyle and
+  Premium; a match is created as a Person the player can ask out.
+
 ## Economic-mode world generation
 
 On the real map, only geography comes from real data: borders, latitude, coastlines, and city

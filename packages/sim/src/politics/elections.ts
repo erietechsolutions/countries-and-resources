@@ -1,4 +1,4 @@
-import { FILING_SUPPORT, localBoost, localSupport } from "./grassroots";
+import { CAMPAIGN_HOURS, FILING_SUPPORT, localBoost, localSupport } from "./grassroots";
 import { addDays, ageInYears, type GameTime } from "../core/calendar";
 import type { GameContext } from "../core/game";
 import { hashString } from "../core/rng";
@@ -97,17 +97,17 @@ export function filingBlocker(ctx: GameContext, election: Election): string | nu
     return "Seats are won on party lists: join a party first.";
   if (party) {
     if (!party.legal) return "Your party is banned from elections.";
-    // Local voters only back a party that has a real presence where they live.
-    const where =
+    // Voters only back a party with a real presence where the office is.
+    const support =
       office.level === "city" && office.cityId !== undefined
-        ? ({ level: "city", id: office.cityId } as const)
+        ? localSupport(ctx, { level: "city", id: office.cityId }, party)
         : office.level === "region" && office.provinceId !== undefined
-          ? ({ level: "region", id: office.provinceId } as const)
-          : null;
-    if (where) {
-      const support = localSupport(ctx, where, party);
-      if (support < FILING_SUPPORT)
-        return `Your party needs ${formatPercent(FILING_SUPPORT, 0)} support here to field candidates (now ${formatPercent(support, 1)}). Volunteer, rally and campaign to grow it.`;
+          ? localSupport(ctx, { level: "region", id: office.provinceId }, party)
+          : party.popularity;
+    const needed = FILING_SUPPORT[office.level];
+    if (support < needed) {
+      const where = office.level === "national" ? "nationally" : "here";
+      return `Your party needs ${formatPercent(needed, 0)} support ${where} to field candidates (now ${formatPercent(support, 1)}). Volunteer, rally and campaign to grow it.`;
     }
     if (p.politics.rank < req.rank)
       return `Your party nominates members ranked ${req.rank}+ for this office.`;
@@ -133,7 +133,7 @@ export function fileCandidacy(ctx: GameContext, electionId: string): string | nu
   ctx.state.player.politics.candidacy = { electionId, effort: 0, fundsCents: 0, spentCents: 0 };
   ctx.alert(
     "good",
-    `You're running for ${office.title}! Election day is ${new Date(election.date * 3.6e6).toUTCString().slice(5, 16)}. Campaign and fundraise to win votes.`,
+    `You're running for ${office.title}! Election day is ${new Date(election.date * 3.6e6).toUTCString().slice(5, 16)}. You must campaign at least ${CAMPAIGN_HOURS[office.level]} hours by then, or your party will pull you from the ballot.`,
     "politics",
   );
   return null;
@@ -504,10 +504,47 @@ function reportPlayer(ctx: GameContext, office: Office, won: boolean, share: num
   }
 }
 
+/**
+ * Candidates have to show up: a player who hasn't put in the campaign hours by election day is
+ * dropped from the ballot. They get a warning two weeks ahead.
+ */
+function checkCampaign(ctx: GameContext, e: Election): void {
+  const p = ctx.state.player;
+  const c = p.politics.candidacy;
+  if (!c || c.electionId !== e.id) return;
+  const office = officeById(ctx, e.officeId);
+  if (!office) return;
+  const needed = CAMPAIGN_HOURS[office.level];
+  if (c.effort >= needed) return;
+  const now = ctx.state.time;
+  if (now >= e.date) {
+    p.politics.candidacy = null;
+    e.candidates = e.candidates.filter((x) => x.id !== "player");
+    p.politics.standing = Math.max(0, p.politics.standing - 10);
+    adjustReputation(ctx, "fame", -1);
+    ctx.alert(
+      "bad",
+      `You barely campaigned for ${office.title} (${Math.floor(c.effort)} of ${needed} hours). Your party pulled you from the ballot.`,
+      "politics",
+    );
+    return;
+  }
+  const warnAt = e.date - 14 * DAY;
+  if (now >= warnAt && (p.cooldowns[`campaignWarning:${e.id}`] ?? 0) === 0) {
+    p.cooldowns[`campaignWarning:${e.id}`] = now;
+    ctx.alert(
+      "bad",
+      `Two weeks to election day and you've campaigned ${Math.floor(c.effort)} of the ${needed} hours needed. Get out there, or you'll be dropped from the ballot.`,
+      "politics",
+    );
+  }
+}
+
 export function runElections(ctx: GameContext): void {
   const now: GameTime = ctx.state.time;
   for (const e of ctx.state.politics.elections) {
     if (e.status !== "upcoming") continue;
+    checkCampaign(ctx, e);
     if (now >= e.filingCloses && e.candidates.length === 0) closeFiling(ctx, e);
     if (now >= e.date) resolveElection(ctx, e);
   }

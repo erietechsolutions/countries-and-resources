@@ -104,7 +104,7 @@ describe("growing a party", () => {
     run(game, { type: "party.promote", amountCents: 5_000_000 });
     expect(localSupport(game, city, party)).toBeGreaterThan(start);
     // Months of daily door-knocking.
-    for (let day = 0; day < 150 && localSupport(game, city, party) < FILING_SUPPORT; day++) {
+    for (let day = 0; day < 150 && localSupport(game, city, party) < FILING_SUPPORT.city; day++) {
       while (new Date(game.time * 3_600_000).getUTCHours() !== 10) game.tick();
       game.dispatch({ type: "activity.start", activityId: "partyWork" });
       game.tick(4);
@@ -115,6 +115,47 @@ describe("growing a party", () => {
       game.dispatch({ type: "party.promote", amountCents: 5_000_000 });
       game.tick(6);
     }
-    expect(localSupport(game, city, party)).toBeGreaterThanOrEqual(FILING_SUPPORT);
+    expect(localSupport(game, city, party)).toBeGreaterThanOrEqual(FILING_SUPPORT.city);
+  });
+
+  it("state offices need 12% in the region, national ones 25% nationally", () => {
+    const game = setup();
+    game.state.player.birthTime -= 15 * 366 * DAY; // old enough for any office
+    run(game, { type: "politics.found", name: "Forward Together", preset: "centrist" });
+    const party = playerParty(game)!;
+    const { region } = homeLocalities(game);
+    const offices = officesFor(game, game.state.player.cityId);
+    const regional = offices.find((o) => o.kind === "regionalCouncilor")!;
+    const national = offices.find((o) => o.kind === "legislator")!;
+    for (const o of [regional, national]) o.nextElection = game.time + 60 * DAY;
+    scheduleElections(game);
+    const support = (game.state.politics.localSupport ??= {});
+    support[`region:${region.id}|${party.id}`] = 0.1;
+    expect(filingBlocker(game, electionFor(game, regional)!)).toMatch(/12%/);
+    support[`region:${region.id}|${party.id}`] = 0.13;
+    expect(filingBlocker(game, electionFor(game, regional)!)).toBeNull();
+    expect(filingBlocker(game, electionFor(game, national)!)).toMatch(/25%/);
+    party.popularity = 0.3;
+    expect(filingBlocker(game, electionFor(game, national)!)).toBeNull();
+  });
+
+  it("candidates who don't campaign are dropped from the ballot", () => {
+    const game = setup();
+    run(game, { type: "politics.found", name: "Forward Together", preset: "centrist" });
+    const party = playerParty(game)!;
+    const { city } = homeLocalities(game);
+    (game.state.politics.localSupport ??= {})[`city:${city.id}|${party.id}`] = 0.2;
+    const council = officesFor(game, game.state.player.cityId).find((o) => o.kind === "councilor")!;
+    council.nextElection = game.time + 60 * DAY;
+    scheduleElections(game);
+    const election = electionFor(game, council)!;
+    run(game, { type: "politics.file", electionId: election.id });
+    const alerts: string[] = [];
+    game.events.on("alert", (e) => alerts.push(e.message));
+    game.tick(62 * DAY);
+    expect(alerts.some((a) => a.includes("Two weeks to election day"))).toBe(true);
+    expect(alerts.some((a) => a.includes("pulled you from the ballot"))).toBe(true);
+    expect(election.results?.some((r) => r.id === "player") ?? false).toBe(false);
+    expect(council.holders.includes("player")).toBe(false);
   });
 });
