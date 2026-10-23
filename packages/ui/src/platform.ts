@@ -10,12 +10,64 @@ export async function quitApp(): Promise<void> {
 export interface AvailableUpdate {
   version: string;
   notes: string;
-  install(onProgress: (fraction: number) => void): Promise<void>;
+  /** Missing when the updater couldn't prepare it: the player downloads it from this page. */
+  install?(onProgress: (fraction: number) => void): Promise<void>;
+  downloadPage?: string;
 }
 
-/** Asks GitHub Releases whether a newer signed version exists (desktop only; null if not). */
-export async function checkForUpdate(): Promise<AvailableUpdate | null> {
-  if (!isDesktop) return null;
+export interface UpdateCheck {
+  update: AvailableUpdate | null;
+  /** Why the built-in updater failed, if it did. */
+  error: string | null;
+}
+
+const RELEASES_API =
+  "https://api.github.com/repos/erietechsolutions/countries-and-resources/releases/latest";
+
+/** "0.3.1" > "0.3.0", comparing numbers part by part. */
+function newer(a: string, b: string): boolean {
+  const pa = a.replace(/^v/, "").split(".").map(Number);
+  const pb = b.replace(/^v/, "").split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
+  }
+  return false;
+}
+
+/** Asks GitHub directly for the latest release, for when the built-in updater can't. */
+async function latestRelease(): Promise<AvailableUpdate | null> {
+  const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+  if (!res.ok) return null;
+  const release = (await res.json()) as { tag_name?: string; html_url?: string };
+  if (!release.tag_name || !newer(release.tag_name, __APP_VERSION__)) return null;
+  return {
+    version: release.tag_name.replace(/^v/, ""),
+    notes: "",
+    downloadPage: release.html_url,
+  };
+}
+
+/**
+ * Checks for a newer version: first with the signed built-in updater, then (if that fails or
+ * finds nothing) by asking GitHub directly, so a broken updater can't hide a release.
+ */
+export async function checkForUpdates(): Promise<UpdateCheck> {
+  if (!isDesktop) return { update: null, error: null };
+  let error: string | null = null;
+  try {
+    const update = await signedUpdate();
+    if (update) return { update, error: null };
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+  try {
+    return { update: await latestRelease(), error };
+  } catch (e) {
+    return { update: null, error: error ?? (e instanceof Error ? e.message : String(e)) };
+  }
+}
+
+async function signedUpdate(): Promise<AvailableUpdate | null> {
   const { check } = await import("@tauri-apps/plugin-updater");
   const update = await check();
   if (!update) return null;

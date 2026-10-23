@@ -1631,3 +1631,9 @@ select.input {
   gap: 4px;
   margin: 6px 0;
 }
+
+/* Text the player may want to copy, such as a download link. */
+.selectable {
+  user-select: text;
+  word-break: break-all;
+}

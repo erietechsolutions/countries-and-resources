@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatDate, MODES } from "@cr/sim";
 import { loadGeography } from "../data/geography";
-import { checkForUpdate, isDesktop, quitApp, type AvailableUpdate } from "../platform";
+import { checkForUpdates, isDesktop, quitApp, type AvailableUpdate } from "../platform";
 import { listSaves, type SaveMeta } from "../storage/saves";
 
 interface Props {
@@ -16,6 +16,19 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
   const [update, setUpdate] = useState<AvailableUpdate | null>(null);
   const [installing, setInstalling] = useState<number | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  const recheck = useCallback(() => {
+    setCheckError(null);
+    checkForUpdates()
+      .then((r) => {
+        setUpdate(r.update);
+        setCheckError(r.update ? null : r.error);
+        setChecked(true);
+      })
+      .catch((e: unknown) => setCheckError(e instanceof Error ? e.message : String(e)));
+  }, []);
 
   useEffect(() => {
     listSaves()
@@ -23,14 +36,11 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
       .catch(() => setLatest(null));
     // Start downloading the map while the player reads the menu.
     loadGeography("real-world").catch(() => {});
-    // Offline or no release yet: just carry on without an update.
-    checkForUpdate()
-      .then(setUpdate)
-      .catch(() => setUpdate(null));
-  }, []);
+    recheck();
+  }, [recheck]);
 
   const installUpdate = () => {
-    if (!update) return;
+    if (!update?.install) return;
     setInstalling(0);
     setUpdateError(null);
     update.install(setInstalling).catch((e: unknown) => {
@@ -54,11 +64,23 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
             <strong>Version {update.version} is available</strong>
             {update.notes && <p className="muted small">{update.notes}</p>}
             {updateError && <p className="warn-text small">Update failed: {updateError}</p>}
-            <button className="btn primary" disabled={installing !== null} onClick={installUpdate}>
-              {installing === null
-                ? "Update and restart"
-                : `Downloading… ${Math.round(installing * 100)}%`}
-            </button>
+            {update.install ? (
+              <button
+                className="btn primary"
+                disabled={installing !== null}
+                onClick={installUpdate}
+              >
+                {installing === null
+                  ? "Update and restart"
+                  : `Downloading… ${Math.round(installing * 100)}%`}
+              </button>
+            ) : (
+              <p className="small">
+                The automatic updater couldn't install it, so download it from{" "}
+                <span className="mono selectable">{update.downloadPage}</span>
+                {checkError && <span className="muted"> (updater error: {checkError})</span>}
+              </p>
+            )}
           </div>
         )}
         <nav className="menu-buttons">
@@ -88,6 +110,16 @@ export function MainMenu({ onNewGame, onLoad, onSettings, onContinue }: Props) {
         </nav>
         <p className="version muted small">
           Version {__APP_VERSION__} · Map data: Natural Earth · Towns: GeoNames (CC BY 4.0)
+          {isDesktop && !update && (
+            <>
+              {" · "}
+              <button className="link" onClick={recheck}>
+                Check for updates
+              </button>
+              {checked && !checkError && " (up to date)"}
+              {checkError && <span className="warn-text"> Update check failed: {checkError}</span>}
+            </>
+          )}
         </p>
       </main>
     </div>
