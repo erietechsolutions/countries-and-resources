@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Countries & Resources",
+  "productName": "Countries and Resources",
   "version": "../../../package.json",
   "identifier": "com.countriesandresources.game",
   "build": {
