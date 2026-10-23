@@ -1,5 +1,7 @@
 import { emptyConflict } from "../conflict/types";
 import { hashString } from "./rng";
+import { emptyMarkets } from "../wealth/markets";
+import { emptyWealth } from "../wealth/types";
 import { emptyLegal } from "../crime/crime";
 import { emptyDynasty } from "../life/aging";
 import { emptyStory } from "../events/storyEvents";
@@ -24,6 +26,8 @@ export function normalizeState(state: GameState): void {
   s.dynasty ??= emptyDynasty();
   s.succession ??= null;
   s.reign ??= null;
+  s.wealth ??= emptyWealth();
+  s.markets ??= emptyMarkets();
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };

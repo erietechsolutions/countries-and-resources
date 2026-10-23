@@ -18,7 +18,8 @@ export type UnitType = "room" | "studio" | "oneBed" | "twoBed";
 export type Housing =
   | { kind: "parents" }
   | { kind: "homeless" }
-  | { kind: "renting"; unit: UnitType; rentCents: number; since: GameTime; missedPayments: number };
+  | { kind: "renting"; unit: UnitType; rentCents: number; since: GameTime; missedPayments: number }
+  | { kind: "owned"; propertyId: string };
 
 export type HousingKind = Housing["kind"];
 

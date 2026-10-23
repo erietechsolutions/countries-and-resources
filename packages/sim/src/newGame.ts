@@ -12,6 +12,8 @@ import { emptyConflict } from "./conflict/types";
 import { emptyStory } from "./events/storyEvents";
 import { emptyDynasty } from "./life/aging";
 import { startReign } from "./leader/leader";
+import { emptyMarkets } from "./wealth/markets";
+import { emptyWealth } from "./wealth/types";
 import { generateFamily } from "./life/family";
 import { emptyPolitics } from "./politics/types";
 import { formatMoney } from "./world/format";
@@ -102,6 +104,8 @@ export function createNewGame(
     dynasty: emptyDynasty(),
     succession: null,
     reign: null,
+    wealth: emptyWealth(),
+    markets: emptyMarkets(),
     nextBusinessId: 1,
     log: [],
   };

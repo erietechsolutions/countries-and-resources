@@ -11,6 +11,7 @@ import { conflictSystem } from "../conflict/system";
 import { crimeSystem } from "../crime/crime";
 import { agingSystem } from "../life/aging";
 import { leaderSystem } from "../leader/leader";
+import { wealthSystem } from "../wealth/wealth";
 import type { GameMode } from "../modes/modes";
 import { MODES } from "../modes/modes";
 import { storySystem } from "../events/storyEvents";
@@ -69,6 +70,7 @@ export const defaultSystems: readonly System[] = [
   storySystem,
   rivalsSystem,
   conflictSystem,
+  wealthSystem,
   economySystem,
   agingSystem,
   birthdaySystem,

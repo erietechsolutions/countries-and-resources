@@ -77,7 +77,7 @@ export function proposeBill(
   return null;
 }
 
-function createBill(
+export function createBill(
   ctx: GameContext,
   scope: string,
   policyId: string,

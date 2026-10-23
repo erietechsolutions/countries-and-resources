@@ -1,6 +1,7 @@
 import {
   closeBusiness,
   foundBusiness,
+  listOnStockMarket,
   investInBusiness,
   openLocation,
   raiseInvestment,
@@ -31,7 +32,24 @@ import {
   setMilitarySpending,
 } from "../conflict/war";
 import { chooseHeir } from "../life/aging";
-import type { CountryId, ProvinceId } from "../world/geography";
+import type { HoldingKind, PropertyKind } from "../wealth/types";
+import {
+  buyInvestment,
+  buyMedia,
+  buyProperty,
+  donate,
+  lobby,
+  moveIntoProperty,
+  moveOffshore,
+  moveSavings,
+  renovateProperty,
+  sellInvestment,
+  sellMedia,
+  sellProperty,
+  setMediaLine,
+  setRentedOut,
+} from "../wealth/wealth";
+import type { CityId, CountryId, ProvinceId } from "../world/geography";
 import type { GovernmentType } from "../world/types";
 import { embezzle, joinGang, leaveGang, resolveCase, type CaseChoice } from "../crime/crime";
 import { investigate, reconcile } from "../ai/rivals";
@@ -112,6 +130,21 @@ export type Command =
   | { type: "war.peace"; warId: string }
   | { type: "military.spending"; level: number }
   | { type: "succession.choose"; personId: string }
+  | { type: "savings.move"; amountCents: number }
+  | { type: "offshore.move"; amountCents: number }
+  | { type: "invest.buy"; kind: HoldingKind; target: string; amountCents: number }
+  | { type: "invest.sell"; holdingId: string; fraction: number }
+  | { type: "property.buy"; cityId: CityId; kind: PropertyKind; mortgage: boolean }
+  | { type: "property.sell"; propertyId: string }
+  | { type: "property.renovate"; propertyId: string }
+  | { type: "property.rentOut"; propertyId: string; rentOut: boolean }
+  | { type: "property.moveIn"; propertyId: string }
+  | { type: "influence.donate"; partyId: string; amountCents: number }
+  | { type: "influence.lobby"; policyId: string; direction: 1 | -1 }
+  | { type: "media.buy" }
+  | { type: "media.line"; outletId: string; partyId: string | null }
+  | { type: "media.sell"; outletId: string }
+  | { type: "business.ipo"; businessId: string }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -203,6 +236,22 @@ export const commandHandlers: CommandHandlers = {
   "war.peace": (ctx, cmd) => alive(ctx) ?? proposePeace(ctx, cmd.warId),
   "military.spending": (ctx, cmd) => alive(ctx) ?? setMilitarySpending(ctx, cmd.level),
   "succession.choose": (ctx, cmd) => chooseHeir(ctx, cmd.personId),
+  "savings.move": (ctx, cmd) => alive(ctx) ?? moveSavings(ctx, cmd.amountCents),
+  "offshore.move": (ctx, cmd) => alive(ctx) ?? moveOffshore(ctx, cmd.amountCents),
+  "invest.buy": (ctx, cmd) =>
+    alive(ctx) ?? buyInvestment(ctx, cmd.kind, cmd.target, cmd.amountCents),
+  "invest.sell": (ctx, cmd) => alive(ctx) ?? sellInvestment(ctx, cmd.holdingId, cmd.fraction),
+  "property.buy": (ctx, cmd) => alive(ctx) ?? buyProperty(ctx, cmd.cityId, cmd.kind, cmd.mortgage),
+  "property.sell": (ctx, cmd) => alive(ctx) ?? sellProperty(ctx, cmd.propertyId),
+  "property.renovate": (ctx, cmd) => alive(ctx) ?? renovateProperty(ctx, cmd.propertyId),
+  "property.rentOut": (ctx, cmd) => alive(ctx) ?? setRentedOut(ctx, cmd.propertyId, cmd.rentOut),
+  "property.moveIn": (ctx, cmd) => alive(ctx) ?? moveIntoProperty(ctx, cmd.propertyId),
+  "influence.donate": (ctx, cmd) => alive(ctx) ?? donate(ctx, cmd.partyId, cmd.amountCents),
+  "influence.lobby": (ctx, cmd) => alive(ctx) ?? lobby(ctx, cmd.policyId, cmd.direction),
+  "media.buy": (ctx) => alive(ctx) ?? buyMedia(ctx),
+  "media.line": (ctx, cmd) => alive(ctx) ?? setMediaLine(ctx, cmd.outletId, cmd.partyId),
+  "media.sell": (ctx, cmd) => alive(ctx) ?? sellMedia(ctx, cmd.outletId),
+  "business.ipo": (ctx, cmd) => alive(ctx) ?? listOnStockMarket(ctx, cmd.businessId),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {

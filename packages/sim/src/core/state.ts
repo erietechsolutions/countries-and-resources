@@ -6,6 +6,7 @@ import type { ConflictState } from "../conflict/types";
 import type { StoryState } from "../events/storyEvents";
 import type { DynastyState, PendingSuccession } from "../life/aging";
 import type { Reign } from "../leader/leader";
+import type { MarketsState, WealthState } from "../wealth/types";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
@@ -37,6 +38,10 @@ export interface GameState {
   succession: PendingSuccession | null;
   /** Leader mode: the player's time in power. */
   reign: Reign | null;
+  /** The player's savings, investments, property and media. */
+  wealth: WealthState;
+  /** Stock indexes, commodity prices and the rich list. */
+  markets: MarketsState;
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

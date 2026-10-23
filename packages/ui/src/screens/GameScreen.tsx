@@ -36,6 +36,7 @@ import { MovePanel } from "../panels/MovePanel";
 import { PeoplePanel } from "../panels/PeoplePanel";
 import { PoliticsPanel } from "../panels/PoliticsPanel";
 import { PowerPanel } from "../panels/PowerPanel";
+import { WealthPanel } from "../panels/WealthPanel";
 import { WorkPanel } from "../panels/WorkPanel";
 import { useSettings } from "../storage/settings";
 import { AUTOSAVE_ID, newSaveId, writeSave } from "../storage/saves";
@@ -61,6 +62,7 @@ type Tab =
   | "power"
   | "law"
   | "money"
+  | "wealth"
   | "home"
   | "region";
 
@@ -73,6 +75,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "power", label: "Power" },
   { id: "law", label: "Law" },
   { id: "money", label: "Money" },
+  { id: "wealth", label: "Wealth" },
   { id: "home", label: "Home" },
   { id: "region", label: "Region" },
 ];
@@ -223,7 +226,9 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
       ? "Homeless"
       : p.housing.kind === "parents"
         ? "Parents' house"
-        : unitType(p.housing.unit).label;
+        : p.housing.kind === "owned"
+          ? "Own home"
+          : unitType(p.housing.unit).label;
 
   const quickSave = async (asNew: boolean, name?: string) => {
     const id = asNew || !saveId || saveId === AUTOSAVE_ID ? newSaveId() : saveId;
@@ -373,6 +378,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
             {tab === "power" && <PowerPanel />}
             {tab === "law" && <LawPanel />}
             {tab === "money" && <MoneyPanel />}
+            {tab === "wealth" && <WealthPanel />}
             {tab === "home" && <HomePanel />}
             {tab === "region" && (
               <CitySearch

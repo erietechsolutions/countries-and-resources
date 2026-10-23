@@ -20,6 +20,8 @@ import {
   type PriceLevel,
   type Sector,
   type WageLevel,
+  formatDate,
+  supplyFactor,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
@@ -334,6 +336,22 @@ function BusinessCard({ b }: { b: Business }) {
           </button>
         ))}
       </div>
+      <p className="muted small">
+        {b.listed ? "Listed on the stock market. " : ""}
+        {b.contract && b.contract.until > game.time
+          ? `Government contract with ${b.contract.agency}: ${formatMoney(b.contract.monthlyCents, true)}/month until ${formatDate(b.contract.until)}. `
+          : ""}
+        Material costs are {Math.round(supplyFactor(game, b) * 100)}% of normal here.
+      </p>
+      {!b.listed && (
+        <button
+          className="btn small"
+          title="Needs 2+ locations, a year of results and a value of $2M+"
+          onClick={() => act({ type: "business.ipo", businessId: b.id })}
+        >
+          Go public (sell 25% on the stock market)
+        </button>
+      )}
       <div className="row">
         {confirm ? (
           <>

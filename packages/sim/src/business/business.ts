@@ -9,6 +9,10 @@ import { formatMoney } from "../world/format";
 import type { CityId } from "../world/geography";
 import { PHASE_DEMAND } from "../work/companies";
 import { SECTOR_LABELS, type Sector } from "../work/occupations";
+import type { Resource } from "../world/types";
+import { commodityPrice } from "../wealth/markets";
+import { CRIME_SEVERITY } from "../crime/crime";
+import { playerOffices } from "../politics/government";
 
 export type WageLevel = "low" | "market" | "high";
 export type PriceLevel = "budget" | "standard" | "premium";
@@ -56,6 +60,52 @@ export interface Business {
   /** Consecutive months the company ended with negative cash. */
   troubleMonths: number;
   history: BusinessMonth[];
+  /** A government contract: steady extra revenue until it runs out. */
+  contract?: GovernmentContract;
+  /** Listed on the stock market: easier to value, and better known. */
+  listed?: boolean;
+}
+
+export interface GovernmentContract {
+  agency: string;
+  monthlyCents: number;
+  until: GameTime;
+  /** Awarded by an office the player holds: a conflict of interest. */
+  corrupt: boolean;
+}
+
+/** Raw materials each sector buys. Local supply cuts costs; world prices move them. */
+export const SECTOR_RESOURCES: Partial<Record<Sector, Resource[]>> = {
+  hospitality: ["farmland", "livestock", "fish"],
+  agriculture: ["farmland", "livestock"],
+  construction: ["timber", "iron"],
+  manufacturing: ["iron", "copper", "coal"],
+  tech: ["rareEarths", "copper"],
+  logistics: ["oil"],
+  transport: ["oil"],
+};
+
+/** Sectors governments hire for. */
+const CONTRACT_SECTORS: Partial<Record<Sector, string>> = {
+  construction: "the Ministry of Infrastructure",
+  healthcare: "the Health Ministry",
+  logistics: "the Defense Ministry",
+  office: "the Treasury",
+  security: "the Interior Ministry",
+  transport: "the Transport Ministry",
+  education: "the Education Ministry",
+  tech: "the Digital Services Agency",
+};
+
+/** Material costs relative to normal: local resources help, commodity prices move them. */
+export function supplyFactor(ctx: GameContext, b: Business): number {
+  const resources = SECTOR_RESOURCES[b.sector];
+  if (!resources || b.locations.length === 0) return 1;
+  const province =
+    ctx.state.world.provinces[ctx.geography.cities[b.locations[0]!.cityId]!.provinceId];
+  const local = province?.resources.some((r) => resources.includes(r)) ? 0.85 : 1;
+  const prices = resources.reduce((s, r) => s + commodityPrice(ctx, r), 0) / resources.length;
+  return Math.round(local * (0.5 + 0.5 * prices) * 1000) / 1000;
 }
 
 export interface SectorEconomics {
@@ -203,7 +253,11 @@ export function valuation(b: Business): number {
     ? recent.reduce((s, m) => s + m.profitCents, 0) / recent.length
     : 0;
   const assets = b.locations.reduce((s, l) => s + l.size, 0);
-  return Math.max(0, Math.round(avgProfit * 12 * 3 + b.cashCents - b.debtCents + assets * 0));
+  const multiple = b.listed ? 3.75 : 3;
+  return Math.max(
+    0,
+    Math.round(avgProfit * 12 * multiple + b.cashCents - b.debtCents + assets * 0),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -389,6 +443,68 @@ export function raiseInvestment(ctx: GameContext, id: string, sharePercent: numb
   return null;
 }
 
+/** An initial public offering: a quarter of the company is sold as new shares to raise cash. */
+export function listOnStockMarket(ctx: GameContext, id: string): string | null {
+  const b = getActive(ctx, id);
+  if (typeof b === "string") return b;
+  if (b.listed) return "It's already listed.";
+  if (b.locations.length < 2) return "Only companies with at least 2 locations can go public.";
+  if (b.history.length < 12) return "Investors want a year of results first.";
+  const value = valuation(b);
+  if (value < 200_000_000)
+    return `Exchanges list companies worth ${formatMoney(200_000_000, true)}+.`;
+  const raised = Math.round(value * 0.25 * 1.1);
+  b.cashCents += raised;
+  b.playerShare = Math.round(b.playerShare * 0.75 * 1000) / 1000;
+  b.listed = true;
+  b.brand = Math.min(100, b.brand + 10);
+  adjustReputation(ctx, "fame", 6);
+  adjustReputation(ctx, "business", 5);
+  ctx.alert(
+    "good",
+    `${b.name} is now a public company. The offering raised ${formatMoney(raised, true)}.`,
+    "money",
+  );
+  return null;
+}
+
+/** Well-connected companies win government work; awarding it to yourself is corruption. */
+function awardContracts(ctx: GameContext): void {
+  const p = ctx.state.player;
+  const official = playerOffices(ctx).length > 0;
+  for (const b of activeBusinesses(ctx)) {
+    const agency = CONTRACT_SECTORS[b.sector];
+    if (!agency || (b.contract && b.contract.until > ctx.state.time)) continue;
+    const chance = 0.03 + Math.max(0, p.reputation.establishment) / 400 + (official ? 0.08 : 0);
+    if (!ctx.rng.chance(chance)) continue;
+    const recent = b.history.slice(-3);
+    const revenue = recent.reduce((s, m) => s + m.revenueCents, 0) / Math.max(1, recent.length);
+    const monthly = Math.max(
+      cityCosts(ctx, b.locations[0]!.cityId).medianWageCents * 200,
+      Math.round(revenue * 0.3),
+    );
+    b.contract = {
+      agency,
+      monthlyCents: monthly,
+      until: ctx.state.time + 365 * 24,
+      corrupt: official,
+    };
+    if (official) {
+      p.legal.secrets.push({
+        crime: "bribery",
+        time: ctx.state.time,
+        severity: CRIME_SEVERITY.bribery,
+      });
+      if (p.legal.secrets.length > 20) p.legal.secrets.shift();
+    }
+    ctx.alert(
+      "good",
+      `${b.name} won a contract with ${agency}: ${formatMoney(monthly, true)} a month for a year.${official ? " Your office helped, which could look bad if it came out." : ""}`,
+      "work",
+    );
+  }
+}
+
 export function sellBusiness(ctx: GameContext, id: string): string | null {
   const b = getActive(ctx, id);
   if (typeof b === "string") return b;
@@ -477,7 +593,8 @@ export function runBusinessMonth(ctx: GameContext, b: Business, commit: boolean)
     rent += cityCosts(ctx, loc.cityId).rentCents("oneBed") * loc.size * 1.5;
     shareSum += share;
   }
-  const materials = revenue * econ.materials;
+  const materials = revenue * econ.materials * supplyFactor(ctx, b);
+  if (b.contract && b.contract.until > ctx.state.time) revenue += b.contract.monthlyCents;
   const interest = (b.debtCents * 0.1) / 12;
   const preTax = revenue - wages - rent - materials - b.marketingCents - interest;
   const tax =
@@ -539,6 +656,7 @@ export function runBusinessMonth(ctx: GameContext, b: Business, commit: boolean)
 export const businessSystem: System = {
   id: "business",
   onMonth(ctx) {
+    awardContracts(ctx);
     for (const b of activeBusinesses(ctx)) {
       const r = runBusinessMonth(ctx, b, true);
       if (b.cashCents < 0) {

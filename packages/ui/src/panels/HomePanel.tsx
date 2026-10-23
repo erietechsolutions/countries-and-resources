@@ -52,6 +52,12 @@ export function HomePanel() {
             </span>
           </p>
         )}
+        {h.kind === "owned" && (
+          <p>
+            <strong>Your own home</strong>{" "}
+            <span className="muted small">No rent to pay. Manage it in the Wealth tab.</span>
+          </p>
+        )}
         {h.kind !== "parents" && family.length > 0 && (
           <button
             className="btn small"

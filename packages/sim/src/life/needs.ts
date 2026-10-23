@@ -72,6 +72,7 @@ export function happinessTarget(p: Character, conditions: LivingConditions): num
   let target = 55 + conditions.happiness;
   if (p.housing.kind === "parents") target += 3;
   else if (p.housing.kind === "renting") target += unitType(p.housing.unit).happiness;
+  else if (p.housing.kind === "owned") target += 14;
   else target -= 20;
   if (p.job) target += 6;
   if (p.finance.debts.some((d) => d.kind === "collections")) target -= 6;
