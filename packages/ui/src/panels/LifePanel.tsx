@@ -144,7 +144,6 @@ function ActionRow({ def }: { def: ActivityDef }) {
 
 export function LifePanel() {
   const { game } = useGameUi();
-  const p = game.state.player;
   const [showBlocked, setShowBlocked] = useState(true);
   // Activities done with a specific person live in the People tab.
   const visible = ACTIVITIES.filter((a) => !a.system && !a.target && !a.businessTarget);
