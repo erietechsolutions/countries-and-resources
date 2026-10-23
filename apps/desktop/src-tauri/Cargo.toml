@@ -1,6 +1,6 @@
 [package]
 name = "countries-and-resources"
-version = "0.3.1"
+version = "0.3.2"
 description = "Countries & Resources: life simulation and nation-building game"
 edition = "2021"
 
