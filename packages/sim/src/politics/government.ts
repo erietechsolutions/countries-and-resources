@@ -6,6 +6,7 @@ import { adjustReputation } from "../social/social";
 import type { CityId, CountryId } from "../world/geography";
 import type { CountryState, GovernmentType, Party } from "../world/types";
 import { parseScope, policyFor, type PolicyDef } from "./policies";
+import { extraRevenue, extraSpending, interestRate } from "../statecraft/statecraft";
 import type { HolderId, Office, OfficeKind, OfficeLevel } from "./types";
 
 const YEAR = 365 * 24;
@@ -337,19 +338,22 @@ export function runBudget(c: CountryState): void {
   const monthlyGdp = (c.gdpPerCapita * 100 * c.population) / 12;
   if (monthlyGdp <= 0) return;
   const revenue =
-    monthlyGdp * (c.taxes.income * 0.42 + c.taxes.corporate * 0.1 + c.taxes.sales * 0.38);
+    monthlyGdp * (c.taxes.income * 0.42 + c.taxes.corporate * 0.1 + c.taxes.sales * 0.38) +
+    extraRevenue(c);
   const healthcare =
     c.healthcare === "universal" ? 0.07 : c.healthcare === "insurance" ? 0.03 : 0.01;
   const spending =
     monthlyGdp *
-    (0.06 +
-      c.socialServices * 0.08 +
-      healthcare +
-      (c.ruleOfLaw ?? 0.5) * 0.025 +
-      (c.businessRegulation ?? 0.5) * 0.005 +
-      ((c.military?.spending ?? 0.5) - 0.5) * 0.04);
+      (0.06 +
+        c.socialServices * 0.08 +
+        healthcare +
+        (c.ruleOfLaw ?? 0.5) * 0.025 +
+        (c.businessRegulation ?? 0.5) * 0.005 +
+        ((c.military?.spending ?? 0.5) - 0.5) * 0.04) +
+    extraSpending(c);
   const b = budgetOf(c);
-  const interest = (b.debtCents * 0.03) / 12;
+  // Interest follows the country's credit rating (3% a year for a solid borrower).
+  const interest = (b.debtCents * (c.statecraft ? interestRate(c) : 0.03)) / 12;
   b.revenueCents = Math.round(revenue);
   b.spendingCents = Math.round(spending + interest);
   b.debtCents = Math.max(0, Math.round(b.debtCents + spending + interest - revenue));

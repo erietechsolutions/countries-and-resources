@@ -64,10 +64,29 @@ export interface Battle {
   winner: CountryId;
 }
 
+/** What the attackers want from a war. */
+export type WarGoal = "border" | "conquest" | "regimeChange" | "punitive";
+
+export const WAR_GOAL_LABELS: Record<WarGoal, string> = {
+  border: "Take border regions",
+  conquest: "Conquer the country",
+  regimeChange: "Regime change",
+  punitive: "Punitive war (reparations)",
+};
+
+export type WarStance = "offensive" | "balanced" | "defensive";
+
 export interface War {
   id: string;
   name: string;
   kind: WarKind;
+  goal?: WarGoal;
+  /** How each leading country is fighting (balanced if unset). */
+  stances?: Record<CountryId, WarStance>;
+  /** A province a leading country is pushing toward. */
+  objectives?: Record<CountryId, ProvinceId>;
+  /** No fighting until then. */
+  ceasefireUntil?: GameTime;
   /** The first attacker and defender lead their sides; others are allies. */
   attackers: CountryId[];
   defenders: CountryId[];
@@ -110,6 +129,12 @@ export interface ConflictState {
   /** Pairs of allied countries ("AAA|BBB", sorted). */
   alliances: string[];
   referendum: Referendum | null;
+  /** Non-aggression pacts ("AAA|BBB"). */
+  pacts?: string[];
+  /** Trade agreements ("AAA|BBB"). */
+  tradeDeals?: string[];
+  /** Sanctions, one way ("AAA>BBB": AAA sanctions BBB). */
+  sanctions?: string[];
   nextId: number;
 }
 

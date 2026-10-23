@@ -5,6 +5,7 @@ import { normalizeState } from "./normalize";
 import { initCountryEconomy } from "../worldgen/economyInit";
 import { generateMissingCities } from "../worldgen/proceduralWorld";
 import { liveGeography } from "../world/territory";
+import { militaryOf } from "../conflict/military";
 import { toDateParts } from "./calendar";
 import { commandHandlers, type Command, type CommandHandler, type CommandResult } from "./commands";
 import { EventBus, type AlertLevel, type LogCategory } from "./events";
@@ -126,4 +127,6 @@ function upgradeWorld(game: Game): void {
       Rng.fromKey(game.state.config.worldSeed, `economy:${geoCountry.id}`),
     );
   }
+  // Every army exists from the start, so viewing one in the UI can never change the simulation.
+  for (const c of Object.values(game.state.world.countries)) militaryOf(c);
 }

@@ -153,6 +153,49 @@ export interface CountryState {
   nextElection?: number;
   /** Armed forces (derived from the country until first needed). */
   military?: Military;
+  /** Budget priorities, projects and economic policy (defaults until a leader changes them). */
+  statecraft?: Statecraft;
+}
+
+export type BudgetArea =
+  "defense" | "healthcare" | "education" | "infrastructure" | "police" | "welfare";
+
+export type ProjectKind =
+  "railway" | "port" | "powerPlant" | "university" | "hospitals" | "fortress";
+
+export interface Project {
+  id: string;
+  kind: ProjectKind;
+  provinceId: ProvinceId;
+  startedAt: number;
+  doneAt: number;
+  /** Total cost, paid in monthly installments. */
+  costCents: number;
+}
+
+export interface Statecraft {
+  /** 0–1 per area; 0.5 is normal spending. */
+  budget: Record<BudgetArea, number>;
+  /** 0–1: share of big industry the state owns. */
+  stateOwnership: number;
+  /** 0–0.4: average tariff on imports. */
+  tariff: number;
+  /** Extra yearly growth from finished projects. */
+  growthBonus: number;
+  projects: Project[];
+  /** Provinces with fortifications. */
+  forts: ProvinceId[];
+  /** Months until markets forgive the last default. */
+  defaultRecovery?: number;
+}
+
+/** A senior officer. Disloyal generals in an unstable country stage coups. */
+export interface General {
+  name: string;
+  /** 0–1 */
+  skill: number;
+  /** 0–100 */
+  loyalty: number;
 }
 
 /** A country's armed forces. */
@@ -166,6 +209,19 @@ export interface Military {
   mobilization: number;
   /** 0–100: how tired the country is of fighting. */
   exhaustion: number;
+  /** Tanks and armored vehicles. */
+  armor?: number;
+  /** Combat aircraft. */
+  air?: number;
+  /** Warships: needed to land troops across the sea. */
+  navy?: number;
+  /** Drafting young people: more troops, less quality and goodwill. */
+  conscription?: boolean;
+  /** 0–1: military technology. */
+  tech?: number;
+  /** 0–1: research spending (0 = none). */
+  research?: number;
+  generals?: General[];
 }
 
 export type Biome =

@@ -22,15 +22,18 @@ import {
   setOrders,
 } from "../conflict/militia";
 import { callReferendum, declareIndependence } from "../conflict/nation";
-import type { MilitiaOrders } from "../conflict/types";
+import type { MilitiaOrders, WarGoal, WarStance } from "../conflict/types";
 import {
   breakAlliance,
   declareWar,
   improveRelations,
   proposeAlliance,
+  proposeCeasefire,
   proposePeace,
   setMilitarySpending,
+  setWarPlan,
 } from "../conflict/war";
+import { governmentAction, type GovernmentAction } from "../statecraft/statecraft";
 import { chooseHeir } from "../life/aging";
 import type { HoldingKind, PropertyKind } from "../wealth/types";
 import {
@@ -126,7 +129,10 @@ export type Command =
   | { type: "diplomacy.improve"; countryId: CountryId }
   | { type: "diplomacy.ally"; countryId: CountryId }
   | { type: "diplomacy.breakAlliance"; countryId: CountryId }
-  | { type: "war.declare"; countryId: CountryId }
+  | { type: "war.declare"; countryId: CountryId; goal?: WarGoal }
+  | { type: "war.plan"; warId: string; stance: WarStance; objective: ProvinceId | null }
+  | { type: "war.ceasefire"; warId: string }
+  | { type: "gov.action"; action: GovernmentAction }
   | { type: "war.peace"; warId: string }
   | { type: "military.spending"; level: number }
   | { type: "succession.choose"; personId: string }
@@ -232,7 +238,10 @@ export const commandHandlers: CommandHandlers = {
   "diplomacy.improve": (ctx, cmd) => alive(ctx) ?? improveRelations(ctx, cmd.countryId),
   "diplomacy.ally": (ctx, cmd) => alive(ctx) ?? proposeAlliance(ctx, cmd.countryId),
   "diplomacy.breakAlliance": (ctx, cmd) => alive(ctx) ?? breakAlliance(ctx, cmd.countryId),
-  "war.declare": (ctx, cmd) => alive(ctx) ?? declareWar(ctx, cmd.countryId),
+  "war.declare": (ctx, cmd) => alive(ctx) ?? declareWar(ctx, cmd.countryId, cmd.goal),
+  "war.plan": (ctx, cmd) => alive(ctx) ?? setWarPlan(ctx, cmd.warId, cmd.stance, cmd.objective),
+  "war.ceasefire": (ctx, cmd) => alive(ctx) ?? proposeCeasefire(ctx, cmd.warId),
+  "gov.action": (ctx, cmd) => alive(ctx) ?? governmentAction(ctx, cmd.action),
   "war.peace": (ctx, cmd) => alive(ctx) ?? proposePeace(ctx, cmd.warId),
   "military.spending": (ctx, cmd) => alive(ctx) ?? setMilitarySpending(ctx, cmd.level),
   "succession.choose": (ctx, cmd) => chooseHeir(ctx, cmd.personId),

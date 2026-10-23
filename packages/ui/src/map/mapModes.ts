@@ -1,4 +1,5 @@
 import {
+  armyPower,
   BIOME_LABELS,
   RESOURCE_LABELS,
   formatMoney,
@@ -9,7 +10,8 @@ import {
   type WorldState,
 } from "@cr/sim";
 
-export type MapMode = "political" | "terrain" | "resources" | "wealth" | "stability" | "conflict";
+export type MapMode =
+  "political" | "terrain" | "resources" | "wealth" | "stability" | "conflict" | "military";
 
 export const MAP_MODES: { id: MapMode; label: string; key: string }[] = [
   { id: "political", label: "Political", key: "Q" },
@@ -18,7 +20,12 @@ export const MAP_MODES: { id: MapMode; label: string; key: string }[] = [
   { id: "wealth", label: "Wealth", key: "R" },
   { id: "stability", label: "Stability", key: "T" },
   { id: "conflict", label: "Conflict", key: "Y" },
+  { id: "military", label: "Military", key: "U" },
 ];
+
+/** Weak to strong armies. */
+const MILITARY_STOPS = [0x2c3440, 0x3d5a73, 0x6a6fa8, 0xb0607a, 0xe0703f];
+const FORT = 0xf2c94c;
 
 const CONFLICT_COLORS = {
   peace: 0x4f5b69,
@@ -99,6 +106,18 @@ export function ramp(stops: number[], t: number): number {
 const WEALTH_MIN = Math.log(500);
 const WEALTH_MAX = Math.log(80_000);
 
+/** Countries shaded by armed strength, on a log scale between the weakest and strongest. */
+function militaryShades(world: WorldState): Map<string, number> {
+  const powers = Object.values(world.countries)
+    .filter((c) => c.population > 0 && c.military)
+    .map((c) => [c.id, Math.log10(1 + armyPower(c))] as const);
+  const lo = Math.min(...powers.map(([, p]) => p));
+  const hi = Math.max(...powers.map(([, p]) => p));
+  return new Map(
+    powers.map(([id, p]) => [id, ramp(MILITARY_STOPS, (p - lo) / Math.max(0.001, hi - lo))]),
+  );
+}
+
 /** The fill color of every province for a map mode, indexed by province id. */
 export function provinceColors(
   mode: MapMode,
@@ -107,6 +126,15 @@ export function provinceColors(
   conflict?: ConflictState,
 ): number[] {
   const fronts = mode === "conflict" && conflict ? conflictColors(geo, conflict) : null;
+  const strength = mode === "military" ? militaryShades(world) : null;
+  const occupied =
+    mode === "military" && conflict
+      ? new Set(
+          conflict.wars
+            .filter((w) => w.status === "active")
+            .flatMap((w) => Object.keys(w.occupied).map(Number)),
+        )
+      : null;
   return geo.provinces.map((gp) => {
     const country = world.countries[gp.countryId];
     const province = world.provinces[gp.id];
@@ -132,6 +160,11 @@ export function provinceColors(
         return inhabited ? ramp(STABILITY_STOPS, province.stability / 100) : UNINHABITED;
       case "conflict":
         return inhabited ? (fronts?.get(gp.id) ?? CONFLICT_COLORS.peace) : UNINHABITED;
+      case "military":
+        if (!inhabited) return UNINHABITED;
+        if (occupied?.has(gp.id)) return CONFLICT_COLORS.occupied;
+        if (country.statecraft?.forts.includes(gp.id)) return FORT;
+        return strength?.get(gp.countryId) ?? MILITARY_STOPS[0]!;
     }
   });
 }
@@ -170,6 +203,13 @@ export function legendFor(mode: MapMode): Legend {
       };
     case "stability":
       return { kind: "gradient", stops: STABILITY_STOPS, low: "Unstable", high: "Stable" };
+    case "military":
+      return {
+        kind: "gradient",
+        stops: MILITARY_STOPS,
+        low: "Weak army",
+        high: "Strong army (forts in gold, occupied in red)",
+      };
     case "conflict":
       return {
         kind: "swatches",

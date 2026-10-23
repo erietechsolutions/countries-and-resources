@@ -8,6 +8,7 @@ import {
   formatTime,
   fullName,
   MODES,
+  playerRuledCountry,
   serializeSave,
   toDateParts,
   unitType,
@@ -98,7 +99,12 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
 
   const [menu, setMenuState] = useState<Menu>(null);
   const leaderMode = !MODES[state.config.mode].life;
-  const tabs = leaderMode ? LEADER_TABS : TABS;
+  // A player who rises to lead their country gets the Government tab too.
+  const tabs = leaderMode
+    ? LEADER_TABS
+    : playerRuledCountry(game)
+      ? [{ id: "government" as Tab, label: "Government" }, ...TABS]
+      : TABS;
   const [tab, setTab] = useState<Tab>(leaderMode ? "government" : "life");
   const [provinceId, setProvinceId] = useState<ProvinceId | null>(null);
   const [cityId, setCityId] = useState<CityId | null>(null);

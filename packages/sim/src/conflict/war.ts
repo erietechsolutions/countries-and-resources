@@ -12,6 +12,8 @@ import {
 import {
   activeWars,
   adjustRelation,
+  hasPact,
+  navalPower,
   allied,
   alliesOf,
   armyPower,
@@ -25,7 +27,7 @@ import {
   warsOf,
   winChance,
 } from "./military";
-import { pairKey, type War, type WarKind } from "./types";
+import { pairKey, type War, type WarGoal, type WarKind, type WarStance } from "./types";
 
 const MAX_AI_WARS = 3;
 
@@ -56,6 +58,7 @@ export function startWar(
   defender: CountryId,
   kind: WarKind,
   claims: ProvinceId[],
+  goal: WarGoal = "border",
 ): War {
   const conflict = ctx.state.conflict;
   const a = countryName(ctx, attacker);
@@ -64,6 +67,7 @@ export function startWar(
     id: `w${conflict.nextId++}`,
     name: kind === "independence" ? `${d} War of Independence` : `${a}–${d} War`,
     kind,
+    goal,
     attackers: [attacker],
     defenders: [defender],
     claims: [...claims],
@@ -138,13 +142,20 @@ function nextObjective(
     );
   let options = enemyLand.filter(frontTouches);
   if (options.length === 0) {
-    // No land front: landings on the coast.
+    // No land front: landings on the coast, which need warships.
     const coastal = ours.some((id) =>
       (geoCountry(geo, id)?.provinceIds ?? []).some((p) => geo.provinces[p]!.coastal),
     );
-    options = coastal ? enemyLand.filter((id) => geo.provinces[id]!.coastal) : [];
+    const fleet = ours.reduce((s, id) => {
+      const c = ctx.state.world.countries[id];
+      return s + (c ? navalPower(c) : 0);
+    }, 0);
+    options = coastal && fleet > 0 ? enemyLand.filter((id) => geo.provinces[id]!.coastal) : [];
   }
   if (options.length === 0) return null;
+  // A leader's chosen objective comes first when it's within reach.
+  const objective = war.objectives?.[ours[0]!];
+  if (objective !== undefined && options.includes(objective)) return objective;
   // Attackers go for what they came for.
   if (side === "attackers") {
     const claimed = options.filter((id) => war.claims.includes(id));
@@ -188,20 +199,42 @@ function losses(ctx: GameContext, ids: CountryId[], share: number): void {
 }
 
 /** One week of fighting: a battle somewhere along the front. */
+/** How hard a side pushes: offensives hit harder and tire the country faster. */
+export function stanceOf(war: War, id: CountryId): WarStance {
+  return war.stances?.[id] ?? "balanced";
+}
+
+const STANCE = {
+  offensive: { power: 1.3, tiring: 1.5 },
+  balanced: { power: 1, tiring: 1 },
+  defensive: { power: 0.85, tiring: 0.7 },
+} as const;
+
 function fight(ctx: GameContext, war: War): void {
-  const att = sidePower(ctx, war.attackers);
-  const def = sidePower(ctx, war.defenders) * 1.1;
+  if ((war.ceasefireUntil ?? 0) > ctx.state.time) return;
+  const aStance = STANCE[stanceOf(war, war.attackers[0]!)];
+  const dStance = STANCE[stanceOf(war, war.defenders[0]!)];
+  const att = sidePower(ctx, war.attackers) * aStance.power;
+  const def = sidePower(ctx, war.defenders) * 1.1 * dStance.power;
   const winner = ctx.rng.chance(winChance(att, def)) ? "attackers" : "defenders";
   const loser = winner === "attackers" ? "defenders" : "attackers";
   const target = nextObjective(ctx, war, winner);
+  const tiring = (side: "attackers" | "defenders") => STANCE[stanceOf(war, war[side][0]!)].tiring;
   losses(ctx, war[winner], 0.01);
   losses(ctx, war[loser], 0.03);
-  exhaust(ctx, war[winner], 1);
-  exhaust(ctx, war[loser], 2.5);
+  exhaust(ctx, war[winner], 1 * tiring(winner));
+  exhaust(ctx, war[loser], 2.5 * tiring(loser));
   if (target === null) return;
 
   const owner = ctx.geography.provinces[target]!.countryId;
   const liberated = war[winner].includes(owner);
+  if (!liberated) {
+    // Dug-in defenders and fortresses often hold even when the battle goes badly.
+    const ownerState = ctx.state.world.countries[owner];
+    const fort = ownerState?.statecraft?.forts.includes(target) ? 0.5 : 0;
+    const dugIn = stanceOf(war, war[loser][0]!) === "defensive" ? 0.35 : 0;
+    if (ctx.rng.chance(fort + dugIn - fort * dugIn)) return;
+  }
   if (liberated) delete war.occupied[target];
   else war.occupied[target] = war[winner][0]!;
   war.battles.push({ time: ctx.state.time, provinceId: target, winner: war[winner][0]! });
@@ -248,6 +281,8 @@ export function endWar(ctx: GameContext, war: War, how: "capitulation" | "negoti
     const side = sideOf(war, occupant);
     // A breakaway state fights to survive, not to conquer the country it left.
     if (war.kind === "independence" && side === "defenders") continue;
+    // Regime change and punitive wars aren't about land.
+    if (side === "attackers" && (war.goal === "regimeChange" || war.goal === "punitive")) continue;
     const keep =
       total ||
       (side === "attackers" && war.claims.includes(id) && war.score > 0) ||
@@ -268,6 +303,8 @@ export function endWar(ctx: GameContext, war: War, how: "capitulation" | "negoti
       ? `, ${transfers.length} region${transfers.length > 1 ? "s" : ""} changed hands.`
       : ".");
   for (const [id, to] of transfers) transferProvince(ctx, id, to);
+  if (war.score > 10) warSpoils(ctx, war);
+  generalsReact(ctx, war);
   for (const x of war.attackers) for (const y of war.defenders) adjustRelation(ctx, x, y, 20);
   for (const id of [...war.attackers, ...war.defenders]) {
     const c = ctx.state.world.countries[id];
@@ -276,6 +313,73 @@ export function endWar(ctx: GameContext, war: War, how: "capitulation" | "negoti
   report(ctx, [...war.attackers, ...war.defenders], "info", `${war.name} is over. ${war.outcome}`);
   for (const id of [...war.attackers, ...war.defenders]) {
     if (!alive(ctx, id)) countryDestroyed(ctx, id);
+  }
+}
+
+/** What the winners of a regime-change or punitive war get. */
+function warSpoils(ctx: GameContext, war: War): void {
+  const winner = ctx.state.world.countries[war.attackers[0]!];
+  const loser = ctx.state.world.countries[war.defenders[0]!];
+  if (!winner || !loser || loser.population === 0) return;
+  if (war.goal === "regimeChange") {
+    loser.government = winner.government;
+    loser.headOfStateTitle = winner.headOfStateTitle;
+    loser.rulingPartyId = loser.parties[0]?.id ?? null;
+    adjustRelation(ctx, winner.id, loser.id, 60);
+    report(
+      ctx,
+      [winner.id, loser.id],
+      "info",
+      `${countryName(ctx, loser.id)} has a new government, installed by ${countryName(ctx, winner.id)}.`,
+    );
+  } else if (war.goal === "punitive") {
+    const reparations = Math.round(((loser.gdpPerCapita * 100 * loser.population) / 12) * 0.6);
+    if (loser.budget) loser.budget.debtCents += reparations;
+    if (winner.budget) winner.budget.debtCents = Math.max(0, winner.budget.debtCents - reparations);
+    report(
+      ctx,
+      [winner.id, loser.id],
+      "info",
+      `${countryName(ctx, loser.id)} must pay reparations to ${countryName(ctx, winner.id)}.`,
+    );
+  }
+}
+
+/** Generals cheer victories and blame leaders for defeats. */
+function generalsReact(ctx: GameContext, war: War): void {
+  const ruled = playerRuledCountry(ctx);
+  if (!ruled) return;
+  const side = sideOf(war, ruled);
+  if (!side) return;
+  const won = side === "attackers" ? war.score > 10 : war.score < -10;
+  const lost = side === "attackers" ? war.score < -10 : war.score > 10;
+  for (const g of militaryOf(ctx.state.world.countries[ruled]!).generals ?? []) {
+    g.loyalty = Math.max(0, Math.min(100, g.loyalty + (won ? 10 : lost ? -15 : 0)));
+  }
+}
+
+/** Occupied regions fight back: losses for the occupier, and sometimes a liberation. */
+function resistance(ctx: GameContext): void {
+  for (const war of activeWars(ctx)) {
+    for (const [key, occupant] of Object.entries(war.occupied)) {
+      const id = Number(key);
+      const ps = ctx.state.world.provinces[id];
+      if (ps) ps.stability = Math.max(0, ps.stability - 2);
+      const occ = ctx.state.world.countries[occupant];
+      const owner = ctx.state.world.countries[ctx.geography.provinces[id]!.countryId];
+      if (!occ || !owner) continue;
+      militaryOf(occ).troops = Math.round(militaryOf(occ).troops * 0.998);
+      if (armyPower(occ) < armyPower(owner) * 3 && ctx.rng.chance(0.06)) {
+        delete war.occupied[id];
+        war.score = warScore(ctx, war);
+        report(
+          ctx,
+          [occupant, owner.id],
+          "info",
+          `Partisans drove ${countryName(ctx, occupant)}'s troops out of ${ctx.geography.provinces[id]!.name}.`,
+        );
+      }
+    }
   }
 }
 
@@ -329,7 +433,11 @@ function warEconomy(ctx: GameContext): void {
       m.mobilization = Math.round(m.mobilization * 0.7 * 100) / 100;
       m.exhaustion = Math.max(0, m.exhaustion - 5);
     }
-    const target = peacetimeTroops(country) * (0.5 + m.spending) * (1 + m.mobilization * 2);
+    const target =
+      peacetimeTroops(country) *
+      (0.5 + m.spending) *
+      (1 + m.mobilization * 2) *
+      (m.conscription ? 1.8 : 1);
     m.troops = Math.max(0, Math.round(m.troops + (target - m.troops) * 0.1));
     m.quality =
       Math.round(Math.min(1, Math.max(0.1, m.quality + (m.spending - 0.5) * 0.01)) * 1000) / 1000;
@@ -359,6 +467,11 @@ function aiPeace(ctx: GameContext): void {
       }
       continue;
     }
+    // A ceasefire that ran its course between AI leaders becomes peace.
+    if (war.ceasefireUntil && war.ceasefireUntil <= ctx.state.time) {
+      endWar(ctx, war, "negotiated");
+      continue;
+    }
     const long = ctx.state.time - war.startedAt > 3 * 365 * 24;
     if (Math.abs(war.score) >= 70 || Math.max(exA, exD) >= 80 || long)
       endWar(ctx, war, "negotiated");
@@ -380,7 +493,8 @@ function aiDeclarations(ctx: GameContext): void {
     if (geo.id === ruled || c.stability < 40 || warsOf(ctx, geo.id).length > 0) continue;
     for (const target of landNeighbors(ctx.geography, geo.id)) {
       const t = ctx.state.world.countries[target];
-      if (!t || t.population === 0 || allied(ctx, geo.id, target)) continue;
+      if (!t || t.population === 0 || allied(ctx, geo.id, target) || hasPact(ctx, geo.id, target))
+        continue;
       const rel = relation(ctx, geo.id, target);
       if (rel >= -40 || armyPower(c) < armyPower(t) * 1.3) continue;
       if (!ctx.rng.chance(0.03 + (-rel - 40) / 2000)) continue;
@@ -416,6 +530,7 @@ export function warWeekly(ctx: GameContext, date: DateParts): void {
 
 export function warMonthly(ctx: GameContext): void {
   warEconomy(ctx);
+  resistance(ctx);
   aiPeace(ctx);
   aiDeclarations(ctx);
   driftRelations(ctx);
@@ -511,20 +626,32 @@ export function warClaims(ctx: GameContext, self: CountryId, target: CountryId):
     .slice(0, 3);
 }
 
-export function declareWar(ctx: GameContext, target: CountryId): string | null {
+export function declareWar(
+  ctx: GameContext,
+  target: CountryId,
+  goal: WarGoal = "border",
+): string | null {
   const self = ruler(ctx);
   if (!ctx.state.world.countries[self]) return self;
   const bad = checkTarget(ctx, self, target);
   if (bad) return bad;
   if (allied(ctx, self, target)) return "You can't attack an ally. End the alliance first.";
+  if (hasPact(ctx, self, target)) return "You have a non-aggression pact with them. End it first.";
   if (warBetween(ctx, self, target)) return "You're already at war with them.";
   const p = ctx.state.player;
   const country = ctx.state.world.countries[self]!;
   if (isDemocratic(country.government) && p.politics.approval < 35)
     return "The legislature won't authorize a war while your approval is this low (35+).";
-  const claims = warClaims(ctx, self, target);
-  if (claims.length === 0) return "Your armies have no way to reach them.";
-  startWar(ctx, self, target, "conquest", claims);
+  const reachable = warClaims(ctx, self, target);
+  if (reachable.length === 0) return "Your armies have no way to reach them.";
+  // Conquest claims everything; border wars the regions next to yours; the others no land.
+  const claims =
+    goal === "conquest"
+      ? [...(geoCountry(ctx.geography, target)?.provinceIds ?? [])]
+      : goal === "border"
+        ? reachable
+        : [];
+  startWar(ctx, self, target, "conquest", claims, goal);
   p.politics.approval = Math.max(0, p.politics.approval - 5);
   return null;
 }
@@ -554,6 +681,54 @@ export function proposePeace(ctx: GameContext, warId: string): string | null {
     return null;
   }
   endWar(ctx, war, "negotiated");
+  return null;
+}
+
+/** The player sets how their side fights, and which region to push for. */
+export function setWarPlan(
+  ctx: GameContext,
+  warId: string,
+  stance: WarStance,
+  objective: ProvinceId | null,
+): string | null {
+  const self = ruler(ctx);
+  if (!ctx.state.world.countries[self]) return self;
+  const war = activeWars(ctx).find((w) => w.id === warId);
+  if (!war) return "That war is over.";
+  if (war.attackers[0] !== self && war.defenders[0] !== self)
+    return "Only the leaders of each side direct the war.";
+  if (!["offensive", "balanced", "defensive"].includes(stance)) return "Unknown stance.";
+  war.stances = { ...war.stances, [self]: stance };
+  const objectives = { ...war.objectives };
+  if (objective === null) delete objectives[self];
+  else objectives[self] = objective;
+  war.objectives = objectives;
+  return null;
+}
+
+/** Proposes six months without fighting. */
+export function proposeCeasefire(ctx: GameContext, warId: string): string | null {
+  const self = ruler(ctx);
+  if (!ctx.state.world.countries[self]) return self;
+  const war = activeWars(ctx).find((w) => w.id === warId);
+  if (!war) return "That war is over.";
+  const side =
+    war.attackers[0] === self ? "attackers" : war.defenders[0] === self ? "defenders" : null;
+  if (!side) return "Only the leaders of each side can agree a ceasefire.";
+  if ((war.ceasefireUntil ?? 0) > ctx.state.time) return "A ceasefire is already holding.";
+  const other =
+    ctx.state.world.countries[side === "attackers" ? war.defenders[0]! : war.attackers[0]!]!;
+  const lead = side === "attackers" ? war.score : -war.score;
+  if (militaryOf(other).exhaustion < 30 && lead < -15) {
+    ctx.alert(
+      "bad",
+      `${countryName(ctx, other.id)} is winning and refuses a ceasefire.`,
+      "politics",
+    );
+    return null;
+  }
+  war.ceasefireUntil = addDays(ctx.state.time, 180);
+  ctx.alert("info", `Ceasefire agreed in the ${war.name} for six months.`, "politics");
   return null;
 }
 

@@ -1623,3 +1623,11 @@ select.input {
   background: #3a1d1c;
   color: #f2a6a3;
 }
+
+/* Budget priorities: area name above its spending chips. */
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0;
+}

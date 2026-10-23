@@ -30,19 +30,36 @@ export function militaryOf(c: CountryState): Military {
     mobilization: 0,
     exhaustion: 0,
   };
-  return c.military;
+  const m = c.military;
+  // Heavier forces scale with the army and the country's wealth.
+  m.armor ??= Math.round((m.troops / 400) * (0.5 + c.development));
+  m.air ??= Math.round((m.troops / 2500) * (0.3 + c.development));
+  m.navy ??= Math.round((m.troops / 4000) * (0.3 + c.development));
+  m.conscription ??= false;
+  m.tech ??= Math.round((0.15 + c.development * 0.6) * 100) / 100;
+  m.research ??= 0;
+  return m;
 }
 
 /** Fighting strength of a country's army in the field. */
 export function armyPower(c: CountryState): number {
   const m = militaryOf(c);
+  const best = (m.generals ?? []).reduce((s, g) => Math.max(s, g.skill), 0);
   return (
-    m.troops *
+    (m.troops + m.armor! * 20 + m.air! * 60) *
     (0.5 + m.quality) *
+    (0.8 + m.tech! * 0.6) *
+    (1 + best * 0.25) *
     (0.4 + m.mobilization) *
     (0.6 + c.stability / 250) *
     (1 - m.exhaustion / 200)
   );
+}
+
+/** Warships available to a side for landings across the sea. */
+export function navalPower(c: CountryState): number {
+  const m = militaryOf(c);
+  return m.navy! * (0.6 + m.tech!);
 }
 
 /** Police and local garrisons holding one region against rebels. */
@@ -105,6 +122,18 @@ export function adjustRelation(ctx: GameContext, a: CountryId, b: CountryId, del
 
 export function allied(ctx: GameContext, a: CountryId, b: CountryId): boolean {
   return ctx.state.conflict.alliances.includes(pairKey(a, b));
+}
+
+export function hasPact(ctx: GameContext, a: CountryId, b: CountryId): boolean {
+  return (ctx.state.conflict.pacts ?? []).includes(pairKey(a, b));
+}
+
+export function hasTradeDeal(ctx: GameContext, a: CountryId, b: CountryId): boolean {
+  return (ctx.state.conflict.tradeDeals ?? []).includes(pairKey(a, b));
+}
+
+export function sanctions(ctx: GameContext, from: CountryId, to: CountryId): boolean {
+  return (ctx.state.conflict.sanctions ?? []).includes(`${from}>${to}`);
 }
 
 export function alliesOf(ctx: GameContext, id: CountryId): CountryId[] {

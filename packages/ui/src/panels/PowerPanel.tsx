@@ -29,7 +29,6 @@ import {
   referendumSupport,
   relation,
   sideOf,
-  SPENDING_LEVELS,
   warBetween,
   warsOf,
   winChance,
@@ -37,9 +36,23 @@ import {
   type GovernmentType,
   type MilitiaOrders,
   type War,
+  borderProvinces,
+  hasPact,
+  hasTradeDeal,
+  militaryRank,
+  sanctions,
+  SPY_OPS,
+  spyOdds,
+  spyOpCost,
+  WAR_GOAL_LABELS,
+  type GovernmentAction,
+  type SpyOp,
+  type WarGoal,
+  type WarStance,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
+import { ForcesCard } from "./StatecraftCards";
 
 const toCents = (t: string) => Math.round(Number(t.replace(/[^0-9.]/g, "")) * 100) || 0;
 
@@ -333,36 +346,31 @@ function RulerCard({ countryId }: { countryId: CountryId }) {
   const { game, act } = useGameUi();
   const country = game.state.world.countries[countryId]!;
   const army = militaryOf(country);
+  const [selected, setSelected] = useState<CountryId | null>(null);
+  const [goal, setGoal] = useState<WarGoal>("border");
+  const [op, setOp] = useState<SpyOp>("sabotage");
+  const [aid, setAid] = useState("");
   const others = new Set<CountryId>([
     ...landNeighbors(game.geography, countryId),
     ...warsOf(game, countryId).flatMap((w) => [...w.attackers, ...w.defenders]),
     ...game.state.conflict.alliances.flatMap((k) => k.split("|")),
+    ...(game.state.conflict.tradeDeals ?? []).flatMap((k) => k.split("|")),
+    ...(game.state.conflict.pacts ?? []).flatMap((k) => k.split("|")),
   ]);
   others.delete(countryId);
   const list = [...others]
     .filter((id) => (game.state.world.countries[id]?.population ?? 0) > 0)
     .sort((a, b) => relation(game, countryId, b) - relation(game, countryId, a));
+  const gov = (action: GovernmentAction) => act({ type: "gov.action", action });
 
   return (
     <section className="card">
       <h4 className="no-margin">Leading {countryName(game, countryId)}</h4>
       <p className="muted small">
-        {formatCompact(army.troops)} troops · quality {Math.round(army.quality * 100)}
+        Military strength: #{militaryRank(game, countryId)} in the world.
       </p>
       <Meter label="Mobilization" value={army.mobilization * 100} compact tone="neutral" />
       <Meter label="War exhaustion" value={army.exhaustion} compact tone="inverse" />
-      <div className="row">
-        <span className="small">Defense spending</span>
-        {SPENDING_LEVELS.map((level) => (
-          <button
-            key={level}
-            className={army.spending === level ? "chip active" : "chip"}
-            onClick={() => act({ type: "military.spending", level })}
-          >
-            {Math.round(level * 200)}%
-          </button>
-        ))}
-      </div>
 
       <h4>Foreign relations</h4>
       {list.length === 0 ? (
@@ -373,15 +381,23 @@ function RulerCard({ countryId }: { countryId: CountryId }) {
             const rel = relation(game, countryId, id);
             const war = warBetween(game, countryId, id);
             const ally = allied(game, countryId, id);
+            const pact = hasPact(game, countryId, id);
+            const trade = hasTradeDeal(game, countryId, id);
+            const sanctioned = sanctions(game, countryId, id);
             return (
               <li key={id}>
                 <div>
-                  <strong>{countryName(game, id)}</strong>{" "}
+                  <button className="link" onClick={() => setSelected(selected === id ? null : id)}>
+                    <strong>{countryName(game, id)}</strong>
+                  </button>{" "}
                   {war && <span className="tag danger-tag">At war</span>}
                   {ally && <span className="tag">Ally</span>}
+                  {pact && <span className="tag">Pact</span>}
+                  {trade && <span className="tag">Trade</span>}
+                  {sanctioned && <span className="tag danger-tag">Sanctioned</span>}
                   <div className="muted small">Relations {Math.round(rel)}</div>
                 </div>
-                <div className="row">
+                <div className="row wrap">
                   {!war && (
                     <button
                       className="btn small"
@@ -390,28 +406,33 @@ function RulerCard({ countryId }: { countryId: CountryId }) {
                       Improve
                     </button>
                   )}
-                  {!war && !ally && rel >= 50 && (
+                  {!war && (ally || rel >= 50) && (
                     <button
                       className="btn small"
-                      onClick={() => act({ type: "diplomacy.ally", countryId: id })}
+                      onClick={() =>
+                        act({
+                          type: ally ? "diplomacy.breakAlliance" : "diplomacy.ally",
+                          countryId: id,
+                        })
+                      }
                     >
-                      Ally
+                      {ally ? "End alliance" : "Ally"}
                     </button>
                   )}
-                  {ally && (
+                  {!war && (pact || rel >= 20) && (
                     <button
                       className="btn small"
-                      onClick={() => act({ type: "diplomacy.breakAlliance", countryId: id })}
+                      onClick={() => gov({ kind: "pact", countryId: id })}
                     >
-                      End alliance
+                      {pact ? "End pact" : "Pact"}
                     </button>
                   )}
-                  {!war && !ally && (
+                  {!war && (trade || rel >= 30) && (
                     <button
-                      className="btn small danger"
-                      onClick={() => act({ type: "war.declare", countryId: id })}
+                      className="btn small"
+                      onClick={() => gov({ kind: "trade", countryId: id })}
                     >
-                      Declare war
+                      {trade ? "End trade deal" : "Trade deal"}
                     </button>
                   )}
                 </div>
@@ -419,6 +440,82 @@ function RulerCard({ countryId }: { countryId: CountryId }) {
             );
           })}
         </ul>
+      )}
+      {selected && (
+        <div className="card">
+          <h4 className="no-margin">{countryName(game, selected)}</h4>
+          <div className="row wrap">
+            <button
+              className="btn small"
+              onClick={() =>
+                gov({
+                  kind: "sanction",
+                  countryId: selected,
+                  on: !sanctions(game, countryId, selected),
+                })
+              }
+            >
+              {sanctions(game, countryId, selected) ? "Lift sanctions" : "Impose sanctions"}
+            </button>
+            <input
+              className="input small-input"
+              placeholder="Aid $"
+              value={aid}
+              onChange={(e) => setAid(e.target.value)}
+              aria-label="Foreign aid"
+            />
+            <button
+              className="btn small"
+              onClick={() =>
+                gov({
+                  kind: "aid",
+                  countryId: selected,
+                  amountCents: Math.round(Number(aid.replace(/[^0-9.]/g, "")) * 100) || 0,
+                })
+              }
+            >
+              Send aid
+            </button>
+          </div>
+          <div className="row wrap">
+            <select className="input" value={op} onChange={(e) => setOp(e.target.value as SpyOp)}>
+              {(Object.keys(SPY_OPS) as SpyOp[]).map((k) => (
+                <option key={k} value={k}>
+                  {SPY_OPS[k].label}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn small danger"
+              onClick={() => gov({ kind: "spy", countryId: selected, op })}
+            >
+              Run operation ({formatPercent(spyOdds(game, countryId, selected, op), 0)},{" "}
+              {formatMoney(spyOpCost(country), true)})
+            </button>
+          </div>
+          <p className="muted small">{SPY_OPS[op].description}</p>
+          {!warBetween(game, countryId, selected) && (
+            <div className="row wrap">
+              <select
+                className="input"
+                value={goal}
+                onChange={(e) => setGoal(e.target.value as WarGoal)}
+              >
+                {(Object.keys(WAR_GOAL_LABELS) as WarGoal[]).map((g) => (
+                  <option key={g} value={g}>
+                    {WAR_GOAL_LABELS[g]}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn small danger"
+                onClick={() => act({ type: "war.declare", countryId: selected, goal })}
+              >
+                Declare war
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </section>
   );
@@ -463,12 +560,67 @@ function WarCard({ war, leader }: { war: War; leader: CountryId | null }) {
             ))}
         </ul>
       )}
+      {war.goal && <p className="muted small">Goal: {WAR_GOAL_LABELS[war.goal]}.</p>}
+      {(war.ceasefireUntil ?? 0) > game.time && (
+        <p className="small">Ceasefire until {formatDate(war.ceasefireUntil!)}.</p>
+      )}
+      {leads && leader && <WarPlan war={war} self={leader} />}
       {leads && (
-        <button className="btn small" onClick={() => act({ type: "war.peace", warId: war.id })}>
-          Offer peace
-        </button>
+        <div className="row">
+          <button className="btn small" onClick={() => act({ type: "war.peace", warId: war.id })}>
+            Offer peace
+          </button>
+          <button
+            className="btn small"
+            onClick={() => act({ type: "war.ceasefire", warId: war.id })}
+          >
+            Propose ceasefire
+          </button>
+        </div>
       )}
     </section>
+  );
+}
+
+/** How the player's side fights: stance and the region to push for. */
+function WarPlan({ war, self }: { war: War; self: CountryId }) {
+  const { game, act } = useGameUi();
+  const stance = war.stances?.[self] ?? "balanced";
+  const objective = war.objectives?.[self] ?? null;
+  const enemies = war.attackers.includes(self) ? war.defenders : war.attackers;
+  const targets = enemies.flatMap((id) => borderProvinces(game.geography, self, id)).slice(0, 40);
+  return (
+    <div className="row wrap">
+      {(["offensive", "balanced", "defensive"] as WarStance[]).map((s) => (
+        <button
+          key={s}
+          className={stance === s ? "chip active" : "chip"}
+          onClick={() => act({ type: "war.plan", warId: war.id, stance: s, objective })}
+        >
+          {s === "offensive" ? "Offensive" : s === "balanced" ? "Balanced" : "Dig in"}
+        </button>
+      ))}
+      <select
+        className="input"
+        value={objective ?? ""}
+        onChange={(e) =>
+          act({
+            type: "war.plan",
+            warId: war.id,
+            stance,
+            objective: e.target.value === "" ? null : Number(e.target.value),
+          })
+        }
+        aria-label="Objective"
+      >
+        <option value="">Objective: wherever the front allows</option>
+        {targets.map((id) => (
+          <option key={id} value={id}>
+            Take {game.geography.provinces[id]!.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -542,6 +694,7 @@ export function PowerPanel() {
         <WarCard key={w.id} war={w} leader={ruled} />
       ))}
       {ruled && <RulerCard countryId={ruled} />}
+      {ruled && <ForcesCard countryId={ruled} />}
       {lifeMode && <MilitiaCard />}
       {lifeMode && <IndependenceCard />}
       <WorldConflicts />

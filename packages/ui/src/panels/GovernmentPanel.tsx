@@ -8,12 +8,14 @@ import {
   GOVERNMENT_LABELS,
   isDemocratic,
   isPresidential,
+  playerRuledCountry,
   snapshot,
   type CountrySnapshot,
   type Game,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
+import { BudgetCard, EconomyPolicyCard, ProjectsCard } from "./StatecraftCards";
 
 const YEAR = 365 * 24;
 
@@ -118,15 +120,16 @@ function threats(game: Game, countryId: string): string {
 export function GovernmentPanel() {
   const { game } = useGameUi();
   const reign = game.state.reign;
-  if (!reign) return null;
+  const ruled = playerRuledCountry(game);
+  const countryId = reign?.countryId ?? ruled;
+  if (!countryId) return <p className="hint">You don't lead a country.</p>;
   const s = game.state;
-  const countryId = reign.countryId;
   const country = s.world.countries[countryId];
   const head = s.politics.offices.find(
     (o) => o.kind === "headOfGovernment" && o.countryId === countryId,
   );
   const party = country?.parties.find((p) => p.id === s.player.politics.partyId);
-  const years = ((reign.endedAt ?? s.time) - reign.startedAt) / YEAR;
+  const years = reign ? ((reign.endedAt ?? s.time) - reign.startedAt) / YEAR : null;
   const budget = country ? budgetOf(country) : null;
   const balance = budget ? budget.revenueCents - budget.spendingCents : 0;
   const annualGdp = country ? country.gdpPerCapita * 100 * country.population : 0;
@@ -137,16 +140,15 @@ export function GovernmentPanel() {
         <h4 className="no-margin">{head?.title ?? `Leader of ${countryName(game, countryId)}`}</h4>
         <p className="muted small">
           {country && GOVERNMENT_LABELS[country.government]}
-          {party && ` · ${party.name} (${formatPercent(party.popularity, 0)} support)`} · in office{" "}
-          {years < 1
-            ? `${Math.max(0, Math.floor(years * 12))} months`
-            : `${years.toFixed(1)} years`}
+          {party && ` · ${party.name} (${formatPercent(party.popularity, 0)} support)`}
+          {years !== null &&
+            ` · in office ${years < 1 ? `${Math.max(0, Math.floor(years * 12))} months` : `${years.toFixed(1)} years`}`}
         </p>
         <Meter label="Public approval" value={s.player.politics.approval} />
         <p className="small">{threats(game, countryId)}</p>
       </section>
 
-      {country && (
+      {country && reign && (
         <section className="card">
           <h4 className="no-margin">The country since you took office</h4>
           <RecordTable stats={recordStats(reign.start, snapshot(game, countryId))} />
@@ -180,10 +182,17 @@ export function GovernmentPanel() {
             </li>
           </ul>
           <p className="muted small">
-            Change taxes and spending through laws in the Politics tab. Defense spending, diplomacy
-            and war are in the Military tab.
+            Change tax rates through laws in the Politics tab. Armed forces, diplomacy and war are
+            in the Military tab.
           </p>
         </section>
+      )}
+      {ruled === countryId && (
+        <>
+          <BudgetCard countryId={countryId} />
+          <ProjectsCard countryId={countryId} />
+          <EconomyPolicyCard countryId={countryId} />
+        </>
       )}
     </div>
   );
