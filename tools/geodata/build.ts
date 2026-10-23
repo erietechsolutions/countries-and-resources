@@ -434,6 +434,29 @@ function inPolygons(x: number, y: number, polygons: GeoPolygon[]): boolean {
   return false;
 }
 
+/**
+ * Share of a lake's area that lies on province land, sampled on a grid. The provinces come from
+ * the "_lakes" variant, which already cuts big lakes out of the land at full detail; drawing the
+ * (more simplified) lake shape again on top would spill water over the shore.
+ */
+function landShare(lake: GeoPolygon, provinces: GeoProvince[]): number {
+  const [x0, y0, x1, y1] = bboxOf([lake]);
+  const step = Math.max((x1 - x0) / 30, (y1 - y0) / 30, 0.01);
+  const nearby = provinces.filter(
+    (p) => p.bbox[0] <= x1 && p.bbox[2] >= x0 && p.bbox[1] <= y1 && p.bbox[3] >= y0,
+  );
+  let inside = 0;
+  let land = 0;
+  for (let x = x0 + step / 2; x < x1; x += step) {
+    for (let y = y0 + step / 2; y < y1; y += step) {
+      if (!inPolygons(x, y, [lake])) continue;
+      inside++;
+      if (nearby.some((p) => inPolygons(x, y, p.polygons))) land++;
+    }
+  }
+  return inside === 0 ? 1 : land / inside;
+}
+
 function bboxOf(polygons: GeoPolygon[]): [number, number, number, number] {
   let x0 = Infinity,
     y0 = Infinity,
@@ -880,10 +903,14 @@ async function main() {
 
   const lakeFeatures = simplifyLakes(lakesPath);
   const lakes: GeoPolygon[] = [];
+  let skippedLakes = 0;
   for (const f of lakeFeatures.features) {
     path2d(f);
     const polygons = groupRings(recorder.take(3));
-    lakes.push(...polygons);
+    // Lakes already cut out of the provinces show as water without help; only draw the rest.
+    const inland = polygons.filter((poly) => landShare(poly, provinces) >= 0.5);
+    skippedLakes += polygons.length - inland.length;
+    lakes.push(...inland);
     const sourceName = cleanName(f.properties.name ?? "");
     const name = WATER_NAME_OVERRIDES[sourceName] ?? sourceName;
     const rings = polygons.flat();
@@ -916,7 +943,7 @@ async function main() {
   console.log(
     `Wrote ${path.relative(root, outFile)}: ${(json.length / 1e6).toFixed(1)} MB, ` +
       `${countries.size} countries, ${provinces.length} provinces, ${cities.length} cities, ` +
-      `${vertices} vertices, ${lakes.length} lake shapes, ${waterLabels.length} water labels`,
+      `${vertices} vertices, ${lakes.length} lake shapes (${skippedLakes} already cut out of the land), ${waterLabels.length} water labels`,
   );
 }
 
