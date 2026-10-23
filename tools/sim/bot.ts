@@ -1,12 +1,13 @@
 /**
  * A simple rule-based player used for balance testing. It only uses player commands, so it can
- * do nothing a real player couldn't. It survives first, then works its way up.
+ * do nothing a real player couldn't. It lives within its means and works its way up.
  */
 import {
   activityBlocker,
   activityById,
   cityCosts,
   electionFor,
+  lifestyleDailyCost,
   filingBlocker,
   officesFor,
   rentalListings,
@@ -17,13 +18,13 @@ import {
 
 export interface BotStats {
   hospitalVisits: number;
-  collapses: number;
   robberies: number;
   firstJobDay: number | null;
   jobsHeld: number;
   firedOrLaidOff: number;
   daysHomeless: number;
-  minFood: number;
+  /** Days spent without enough money for even a frugal day. */
+  daysWithout: number;
 }
 
 function tryStart(game: Game, activityId: string, amount?: number): boolean {
@@ -42,8 +43,12 @@ export function botStep(game: Game): void {
   const p = s.player;
   if (p.activity) return;
   const hour = toDateParts(s.time).hour;
-  const n = p.needs;
   const costs = cityCosts(game, p.cityId);
+
+  // Live modestly once there is steady income and a cushion; otherwise frugally.
+  const cushion = lifestyleDailyCost(game, "modest") * 30;
+  const style = p.job && p.cashCents > cushion ? "modest" : "frugal";
+  if (p.lifestyle !== style) tryCommand(game, { type: "lifestyle.set", lifestyle: style });
 
   // Take the best job offer.
   if (p.jobOffers.length > 0) {
@@ -64,7 +69,6 @@ export function botStep(game: Game): void {
     if (p.cashCents > costs.itemCents(item) * 4) tryCommand(game, { type: "shop.buy", item });
   }
 
-  const night = hour >= 22 || hour < 6;
   if (
     p.housing.kind === "homeless" &&
     hour >= 17 &&
@@ -73,20 +77,6 @@ export function botStep(game: Game): void {
     tryStart(game, "shelter")
   )
     return;
-  if (n.food < 45) {
-    if (tryStart(game, "eat") || tryStart(game, "soupKitchen")) return;
-    if (p.cashCents > costs.mealCents * 6 && tryStart(game, "groceries")) return;
-    if (p.cashCents > costs.fastFoodCents * 3 && tryStart(game, "fastFood")) return;
-    if (n.food < 20 && (tryStart(game, "foodBank") || tryStart(game, "dumpster"))) return;
-  }
-  if (n.energy < 25 || (night && n.energy < 75)) {
-    if (tryStart(game, "sleep")) return;
-  }
-  if (n.hygiene < 40) {
-    if (tryStart(game, "shower")) return;
-    if (p.cashCents > costs.showerCents * 5 && tryStart(game, "gymShower")) return;
-    if (tryStart(game, "washUp")) return;
-  }
   if (!p.job) {
     if (tryStart(game, "dayLabor")) return;
     if (!p.daily.chores && p.housing.kind === "parents" && tryStart(game, "chores")) return;
@@ -95,7 +85,7 @@ export function botStep(game: Game): void {
       return;
     }
     if (p.inventory.items.includes("bicycle") && tryStart(game, "delivery")) return;
-    if (p.housing.kind === "homeless" && n.energy > 40) {
+    if (p.housing.kind === "homeless") {
       if (tryStart(game, "cans") || tryStart(game, "panhandle")) return;
     }
   }
@@ -138,19 +128,17 @@ function politicalAmbition(game: Game): boolean {
 export function playBot(game: Game, days: number): BotStats {
   const stats: BotStats = {
     hospitalVisits: 0,
-    collapses: 0,
     robberies: 0,
     firstJobDay: null,
     jobsHeld: 0,
     firedOrLaidOff: 0,
     daysHomeless: 0,
-    minFood: 100,
+    daysWithout: 0,
   };
   const start = game.time;
   game.events.on("log", (e) => {
     const m = e.entry.message;
     if (m.includes("rushed to the hospital")) stats.hospitalVisits++;
-    if (m.includes("collapsed from exhaustion")) stats.collapses++;
     if (m.includes("robbed")) stats.robberies++;
     if (m.startsWith("You're hired")) {
       stats.jobsHeld++;
@@ -161,7 +149,7 @@ export function playBot(game: Game, days: number): BotStats {
   for (let h = 0; h < days * 24; h++) {
     botStep(game);
     game.tick();
-    stats.minFood = Math.min(stats.minFood, game.state.player.needs.food);
+    if (h % 24 === 1 && game.state.player.daily.wentWithout) stats.daysWithout++;
     if (h % 24 === 0 && game.state.player.housing.kind === "homeless") stats.daysHomeless++;
   }
   return stats;

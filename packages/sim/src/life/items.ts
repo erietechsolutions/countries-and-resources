@@ -24,7 +24,7 @@ export const ITEMS: ItemDef[] = [
   {
     id: "sleepingBag",
     name: "Sleeping bag",
-    description: "Better sleep and less health damage when sleeping outside.",
+    description: "Less damage to your health when you sleep outside.",
     priceWageMultiple: 4,
   },
   {
@@ -36,7 +36,7 @@ export const ITEMS: ItemDef[] = [
   {
     id: "backpack",
     name: "Backpack",
-    description: "Carry more food when you have no home (6 meals instead of 2).",
+    description: "Keeps your things on you: thieves get less when you sleep rough.",
     priceWageMultiple: 3,
   },
 ];

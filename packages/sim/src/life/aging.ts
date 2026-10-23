@@ -148,7 +148,7 @@ interface HeirIdentity {
 }
 
 function relativeIdentity(ctx: GameContext): HeirIdentity {
-  const gender = ctx.rng.pick<Gender>(["male", "female", "female", "male", "nonbinary"]);
+  const gender = ctx.rng.pick<Gender>(["male", "female"]);
   const age = ctx.rng.int(20, 35);
   const birth = addDays(addYears(ctx.state.time, -age), -ctx.rng.int(0, 364));
   return {

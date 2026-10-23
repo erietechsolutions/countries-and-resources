@@ -21,11 +21,12 @@ import {
   type Reputation,
 } from "../social/types";
 import { emptyLegal, type LegalState } from "../crime/crime";
+import type { Lifestyle } from "../life/lifestyle";
 import type { Residency, VisaApplication, VisaGrant } from "../life/moving";
 import { emptyPlayerPolitics, type PlayerPolitics } from "../politics/types";
 import { emptySkills, type SkillXp } from "../work/skills";
 
-export type Gender = "male" | "female" | "nonbinary";
+export type Gender = "male" | "female";
 
 export const APPEARANCE_OPTIONS = {
   skinTone: ["Very light", "Light", "Medium", "Olive", "Brown", "Dark"],
@@ -58,6 +59,8 @@ export interface Character {
   citizenship: CountryId[];
   needs: Needs;
   housing: Housing;
+  /** How well the player lives: replaces day-to-day eating, sleeping and washing. */
+  lifestyle: Lifestyle;
   skills: SkillXp;
   credentials: CredentialId[];
   education: Enrollment | null;
@@ -135,6 +138,7 @@ export function createPlayerCharacter(
       ? { food: 55, energy: 60, hygiene: 35, health: 85, happiness: 35 }
       : { food: 80, energy: 85, hygiene: 80, health: 100, happiness: 65 },
     housing: { kind: options.housing },
+    lifestyle: homeless || options.cashCents === 0 ? "frugal" : "modest",
     skills: emptySkills(),
     credentials: ["highSchool"],
     education: null,
@@ -171,6 +175,7 @@ export function newDailyFlags(time: GameTime): DailyFlags {
     familyTalk: false,
     foodBank: false,
     jobSearch: false,
+    wentWithout: false,
   };
 }
 

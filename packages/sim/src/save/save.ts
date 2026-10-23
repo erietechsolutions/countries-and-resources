@@ -75,6 +75,7 @@ function migrateV1toV2(input: unknown): unknown {
       happiness: homeless ? 35 : 60,
     },
     housing: { kind: homeless ? "homeless" : "parents" },
+    lifestyle: homeless ? "frugal" : "modest",
     skills: emptySkills(),
     credentials: ["highSchool"],
     education: null,

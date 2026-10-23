@@ -59,7 +59,7 @@ const axis = (rng: Rng) => Math.max(-1, Math.min(1, rng.normal(0, 0.5)));
 export function createPerson(ctx: GameContext, opts: PersonOptions): Person {
   const s = ctx.state;
   const rng = ctx.rng;
-  const gender = opts.gender ?? rng.pick<Gender>(["male", "female", "female", "male", "nonbinary"]);
+  const gender = opts.gender ?? rng.pick<Gender>(["male", "female"]);
   const name = randomName(gender, rng);
   const age = rng.int(opts.minAge ?? 18, opts.maxAge ?? 40);
   const birth = addDays(addYears(s.time, -age), -rng.int(0, 364));

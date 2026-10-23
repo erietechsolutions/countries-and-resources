@@ -35,7 +35,7 @@ export function runCareer(cityName: string, seed: number, years: number): Career
       character: {
         firstName: "Bot",
         lastName: "Politician",
-        gender: "nonbinary",
+        gender: "female",
         appearance: {
           skinTone: "Medium",
           hairColor: "Black",

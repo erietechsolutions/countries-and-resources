@@ -57,7 +57,7 @@ export function runScenario(
       character: {
         firstName: "Bot",
         lastName: "Player",
-        gender: "nonbinary",
+        gender: "female",
         appearance: {
           skinTone: "Medium",
           hairColor: "Black",
@@ -115,7 +115,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
       homelessDays: r.daysHomeless,
       cash: r.cash,
       hospital: r.hospitalVisits,
-      collapses: r.collapses,
+      without: r.daysWithout,
       robbed: r.robberies,
       fired: r.firedOrLaidOff,
       health: r.finalHealth,

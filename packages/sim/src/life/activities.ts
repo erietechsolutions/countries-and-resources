@@ -16,7 +16,7 @@ import { occupationById } from "../work/occupations";
 import type { SkillId } from "../work/skills";
 import { fatalCollapse } from "./aging";
 import { averageRelationship, changeRelationship } from "./family";
-import { applyHourlyNeeds, restingPlace, sleepRate, type DecayingNeed } from "./needs";
+import { applyHourlyNeeds, restingPlace } from "./needs";
 import { personById, personName } from "../social/people";
 import {
   adjustReputation,
@@ -28,13 +28,10 @@ import {
 import type { Relationship } from "../social/types";
 import type { LedgerCategory, Needs } from "./types";
 
-export type ActivityCategory =
-  "rest" | "food" | "hygiene" | "home" | "social" | "work" | "money" | "growth" | "crime";
+export type ActivityCategory = "rest" | "home" | "social" | "work" | "money" | "growth" | "crime";
 
 export const CATEGORY_LABELS: Record<ActivityCategory, string> = {
   rest: "Rest",
-  food: "Food",
-  hygiene: "Hygiene",
   home: "Home & family",
   social: "Social life",
   work: "Work",
@@ -66,8 +63,6 @@ export interface ActivityDef {
   costCategory?: LedgerCategory;
   /** Why the activity can't be started right now, or null. */
   unavailable?(ctx: GameContext): string | null;
-  /** Multipliers on normal hourly need decay. */
-  decay?: Partial<Record<DecayingNeed, number>>;
   /** Need changes per hour, on top of normal decay. */
   effects?(ctx: GameContext): Partial<Needs>;
   /** Activities done with someone: why this relationship doesn't allow it, or null. */
@@ -111,12 +106,6 @@ const hasItem = (item: string, name: string) => (ctx: GameContext) =>
   (ctx.state.player.inventory.items as string[]).includes(item) ? null : `Requires a ${name}.`;
 
 /** How many home-cooked meals the player can store. */
-export function mealCapacity(ctx: GameContext): number {
-  const p = ctx.state.player;
-  if (p.housing.kind !== "homeless") return 21;
-  return p.inventory.items.includes("backpack") ? 6 : 2;
-}
-
 function addXp(ctx: GameContext, gains: Partial<Record<SkillId, number>>): void {
   const skills = ctx.state.player.skills;
   for (const [k, v] of Object.entries(gains)) skills[k as SkillId] += v ?? 0;
@@ -137,7 +126,10 @@ function streetRobbery(ctx: GameContext, hours: number): void {
   if (restingPlace(ctx) !== "street" || p.cashCents <= 0) return;
   const stability = countryOf(ctx, p.cityId).stability;
   if (!ctx.rng.chance(0.07 * (1 - stability / 140) * (hours / 8))) return;
-  const stolen = Math.round(p.cashCents * ctx.rng.float(0.3, 1));
+  const share = p.inventory.items.includes("backpack")
+    ? ctx.rng.float(0.1, 0.4)
+    : ctx.rng.float(0.3, 1);
+  const stolen = Math.round(p.cashCents * share);
   transact(ctx, -stolen, "theft", "Robbed while sleeping");
   p.needs.happiness = Math.max(0, p.needs.happiness - 15);
   ctx.alert("bad", `You were robbed while you slept. ${formatMoney(stolen)} was taken.`);
@@ -195,29 +187,14 @@ function currentShiftStart(ctx: GameContext): number | null {
 export const ACTIVITIES: ActivityDef[] = [
   // ---- Rest
   {
-    id: "sleep",
-    label: "Sleep",
+    id: "night",
+    label: "Night",
     category: "rest",
-    description:
-      "Sleep restores energy. A bed is better than a shelter cot, and both beat the street.",
+    description: "Off the clock until morning. A night shift or anything you start ends it.",
+    system: true,
     interruptible: true,
-    amount: {
-      label: "Hours",
-      min: 1,
-      max: () => 12,
-      // Default: sleep until about 7 AM, between 6 and 10 hours.
-      default: (ctx) => Math.max(6, Math.min(10, (31 - hourNow(ctx)) % 24 || 8)),
-    },
-    hours: (_ctx, amount) => amount ?? 8,
-    decay: { food: 0.45, energy: 0, hygiene: 0.5 },
-    effects: (ctx) => {
-      const street = restingPlace(ctx) === "street";
-      const bag = ctx.state.player.inventory.items.includes("sleepingBag");
-      return street
-        ? { energy: sleepRate(ctx), health: bag ? -0.1 : -0.35, happiness: -0.5 }
-        : { energy: sleepRate(ctx) };
-    },
-    onFinish: (ctx, amount) => streetRobbery(ctx, amount ?? 8),
+    hours: (ctx) => (31 - hourNow(ctx)) % 24 || 8,
+    onFinish: (ctx) => streetRobbery(ctx, 8),
   },
   {
     id: "wait",
@@ -245,7 +222,7 @@ export const ACTIVITIES: ActivityDef[] = [
     description: "Fresh air clears your head.",
     interruptible: true,
     hours: () => 1,
-    effects: () => ({ happiness: 3, health: 0.4, energy: -1 }),
+    effects: () => ({ happiness: 3, health: 0.4 }),
   },
   {
     id: "exercise",
@@ -254,155 +231,8 @@ export const ACTIVITIES: ActivityDef[] = [
     description: "Builds health over time. Tiring and sweaty.",
     interruptible: true,
     hours: () => 1,
-    effects: () => ({ health: 1.5, energy: -6, hygiene: -8, happiness: 3 }),
+    effects: () => ({ health: 1.5, happiness: 3 }),
   },
-
-  // ---- Food
-  {
-    id: "eat",
-    label: "Eat a meal",
-    category: "food",
-    description:
-      "Eat a home-cooked meal from your groceries. At your parents' place, family meals are free.",
-    interruptible: true,
-    hours: () => 1,
-    unavailable: (ctx) => {
-      const p = ctx.state.player;
-      if (p.housing.kind === "parents") return null;
-      return p.inventory.meals > 0 ? null : "You have no food. Buy groceries first.";
-    },
-    effects: () => ({ food: 45, happiness: 2 }),
-    onStart: (ctx) => {
-      const p = ctx.state.player;
-      if (p.housing.kind !== "parents") p.inventory.meals--;
-    },
-  },
-  {
-    id: "groceries",
-    label: "Buy groceries",
-    category: "food",
-    description: "The cheapest way to eat. Without a home you can only carry a few meals.",
-    interruptible: true,
-    amount: {
-      label: "Meals",
-      min: 1,
-      max: (ctx) => Math.max(1, mealCapacity(ctx) - ctx.state.player.inventory.meals),
-      default: (ctx) =>
-        Math.max(1, Math.min(7, mealCapacity(ctx) - ctx.state.player.inventory.meals)),
-    },
-    hours: () => 1,
-    unavailable: all(during(7, 22), (ctx) =>
-      ctx.state.player.inventory.meals >= mealCapacity(ctx)
-        ? "You can't carry any more food."
-        : null,
-    ),
-    cost: (ctx, amount) => cityCosts(ctx, ctx.state.player.cityId).mealCents * (amount ?? 1),
-    costCategory: "food",
-    onFinish: (ctx, amount) => {
-      const p = ctx.state.player;
-      p.inventory.meals = Math.min(mealCapacity(ctx), p.inventory.meals + (amount ?? 1));
-    },
-  },
-  {
-    id: "fastFood",
-    label: "Eat fast food",
-    category: "food",
-    description: "Quick and filling, but pricey and not great for you.",
-    interruptible: true,
-    hours: () => 1,
-    unavailable: during(6, 24),
-    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).fastFoodCents,
-    costCategory: "food",
-    effects: () => ({ food: 50, happiness: 3, health: -0.5 }),
-  },
-  {
-    id: "soupKitchen",
-    label: "Soup kitchen",
-    category: "food",
-    description: "A free hot meal. Open for lunch and dinner.",
-    interruptible: true,
-    hours: () => 2,
-    unavailable: (ctx) => {
-      const h = hourNow(ctx);
-      return (h >= 11 && h < 13) || (h >= 17 && h < 19) ? null : "Open 11 AM–1 PM and 5–7 PM.";
-    },
-    effects: () => ({ food: 24, happiness: -0.5 }),
-  },
-  {
-    id: "foodBank",
-    label: "Visit a food bank",
-    category: "food",
-    description: "Free groceries, once a day, where social services exist.",
-    interruptible: true,
-    hours: () => 2,
-    unavailable: all(during(9, 16), (ctx) => {
-      if (countryOf(ctx, ctx.state.player.cityId).socialServices < 0.3)
-        return "There are no food banks here.";
-      if (ctx.state.player.daily.foodBank) return "You've already been today.";
-      return ctx.state.player.inventory.meals >= mealCapacity(ctx)
-        ? "You can't carry any more food."
-        : null;
-    }),
-    onStart: (ctx) => {
-      ctx.state.player.daily.foodBank = true;
-    },
-    onFinish: (ctx) => {
-      const p = ctx.state.player;
-      p.inventory.meals = Math.min(mealCapacity(ctx), p.inventory.meals + 3);
-    },
-  },
-  {
-    id: "dumpster",
-    label: "Search dumpsters for food",
-    category: "food",
-    description: "Free, fast, and risky: you might get food poisoning.",
-    interruptible: true,
-    hours: () => 1,
-    effects: () => ({ food: 20, happiness: -5, hygiene: -6 }),
-    onFinish: (ctx) => {
-      if (ctx.rng.chance(0.22)) {
-        ctx.state.player.needs.health = Math.max(0, ctx.state.player.needs.health - 15);
-        ctx.alert("bad", "You got food poisoning from spoiled food.");
-      }
-    },
-  },
-
-  // ---- Hygiene
-  {
-    id: "shower",
-    label: "Shower",
-    category: "hygiene",
-    description: "At home, or at the shelter if you have a bed there tonight.",
-    interruptible: true,
-    hours: () => 1,
-    unavailable: (ctx) =>
-      restingPlace(ctx) === "street"
-        ? "You need a home or a shelter bed to shower for free."
-        : null,
-    effects: () => ({ hygiene: 70, happiness: 2 }),
-  },
-  {
-    id: "gymShower",
-    label: "Gym day pass",
-    category: "hygiene",
-    description: "Pay for a day pass to use the gym showers.",
-    interruptible: true,
-    hours: () => 1,
-    unavailable: during(6, 22),
-    cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).showerCents,
-    costCategory: "shopping",
-    effects: () => ({ hygiene: 70, happiness: 2 }),
-  },
-  {
-    id: "washUp",
-    label: "Wash up in a public restroom",
-    category: "hygiene",
-    description: "Better than nothing.",
-    interruptible: true,
-    hours: () => 1,
-    effects: () => ({ hygiene: 25 }),
-  },
-
   // ---- Home & family
   {
     id: "shelter",
@@ -427,8 +257,7 @@ export const ACTIVITIES: ActivityDef[] = [
         const tomorrow8 = startOfDay(ctx.state.time) + 24 + 8;
         p.shelterBedUntil = tomorrow8;
         p.cooldowns.shelterAddress = ctx.state.time + 14 * 24;
-        p.needs.food = Math.min(100, p.needs.food + 30);
-        ctx.alert("good", "You got a bed at the shelter tonight, plus a hot dinner.");
+        ctx.alert("good", "You got a bed at the shelter tonight.");
       } else {
         ctx.alert("bad", "The shelter is full tonight.");
       }
@@ -442,7 +271,7 @@ export const ACTIVITIES: ActivityDef[] = [
     interruptible: true,
     hours: () => 2,
     unavailable: withParents,
-    effects: () => ({ happiness: -1, hygiene: -2 }),
+    effects: () => ({ happiness: -1 }),
     onFinish: (ctx) => {
       const d = ctx.state.player.daily;
       if (!d.chores) {
@@ -520,7 +349,7 @@ export const ACTIVITIES: ActivityDef[] = [
     unavailable: during(17, 24),
     cost: (ctx) => cityCosts(ctx, ctx.state.player.cityId).fastFoodCents * 2,
     costCategory: "other",
-    effects: () => ({ happiness: 3, energy: -1 }),
+    effects: () => ({ happiness: 3 }),
     onFinish: (ctx) => {
       if (!ctx.rng.chance(ctx.state.player.needs.hygiene < 30 ? 0.25 : 0.6)) return;
       const person = meetPerson(ctx, "on a night out");
@@ -535,7 +364,7 @@ export const ACTIVITIES: ActivityDef[] = [
     interruptible: true,
     hours: () => 3,
     unavailable: during(9, 18),
-    effects: () => ({ happiness: 1.5, energy: -1 }),
+    effects: () => ({ happiness: 1.5 }),
     onFinish: (ctx) => {
       adjustReputation(ctx, "community", 2);
       adjustReputation(ctx, "activists", 1);
@@ -639,7 +468,6 @@ export const ACTIVITIES: ActivityDef[] = [
       if (!ctx.state.player.job) return "You don't have a job.";
       return shiftHoursLeft(ctx) > 0 ? null : "Not during your shift.";
     },
-    decay: { energy: 1.35, hygiene: 1.4 },
     onStart: (ctx) => {
       const start = currentShiftStart(ctx);
       if (start !== null) {
@@ -656,8 +484,8 @@ export const ACTIVITIES: ActivityDef[] = [
       job.unpaidHours += 1;
       addXp(ctx, occupationById(job.occupationId).trains);
       const n = p.needs;
-      if (n.energy < 20 || n.hygiene < 20 || n.food < 15) job.performance -= 0.6;
-      else if (n.energy > 40 && n.hygiene > 40 && n.happiness > 30) job.performance += 0.2;
+      if (n.health < 30 || n.hygiene < 25) job.performance -= 0.6;
+      else if (n.hygiene > 40 && n.happiness > 30) job.performance += 0.2;
       job.performance = Math.max(0, Math.min(100, job.performance));
     },
   },
@@ -671,7 +499,7 @@ export const ACTIVITIES: ActivityDef[] = [
     unavailable: all(during(9, 21), (ctx) =>
       ctx.state.player.politics.partyId ? null : "Join a party first.",
     ),
-    effects: () => ({ energy: -1, happiness: 0.5 }),
+    effects: () => ({ happiness: 0.5 }),
     onFinish: (ctx) => {
       // Party bosses notice steady commitment, not marathon days: standing counts once a day.
       const p = ctx.state.player;
@@ -694,7 +522,6 @@ export const ACTIVITIES: ActivityDef[] = [
     unavailable: all(during(8, 22), (ctx) =>
       ctx.state.player.politics.candidacy ? null : "You're not running for office.",
     ),
-    effects: () => ({ energy: -2, hygiene: -1 }),
     onHour: (ctx) => {
       const c = ctx.state.player.politics.candidacy;
       if (c) c.effort += 1;
@@ -715,7 +542,6 @@ export const ACTIVITIES: ActivityDef[] = [
     unavailable: all(during(9, 21), (ctx) =>
       ctx.state.player.politics.candidacy ? null : "You're not running for office.",
     ),
-    effects: () => ({ energy: -1 }),
     onFinish: (ctx) => {
       const p = ctx.state.player;
       const c = p.politics.candidacy;
@@ -741,7 +567,7 @@ export const ACTIVITIES: ActivityDef[] = [
     businessTarget: true,
     hours: () => 4,
     unavailable: during(6, 23),
-    effects: () => ({ energy: -1.5, happiness: -0.3 }),
+    effects: () => ({ happiness: -0.3 }),
     onHour: (ctx) => {
       const id = ctx.state.player.activity?.targetId;
       const b = id ? businessById(ctx, id) : undefined;
@@ -757,7 +583,7 @@ export const ACTIVITIES: ActivityDef[] = [
     interruptible: true,
     hours: () => 3,
     unavailable: (ctx) => (ctx.state.player.education ? null : "You're not enrolled in a course."),
-    effects: () => ({ energy: -1.5, happiness: -0.5 }),
+    effects: () => ({ happiness: -0.5 }),
     onHour: (ctx) => {
       const ed = ctx.state.player.education;
       if (ed) ed.progressHours += 1;
@@ -786,9 +612,7 @@ export const ACTIVITIES: ActivityDef[] = [
     onStart: (ctx) => {
       const p = ctx.state.player;
       const labor = Math.sqrt(p.skills.labor / 25);
-      const picked = ctx.rng.chance(
-        Math.min(0.8, (0.35 + labor * 0.05) * demand(ctx) + (p.needs.energy > 50 ? 0.1 : 0)),
-      );
+      const picked = ctx.rng.chance(Math.min(0.8, (0.35 + labor * 0.05) * demand(ctx)));
       if (!picked) {
         p.activity!.endsAt = ctx.state.time + 2;
         p.activity!.amount = 0;
@@ -797,7 +621,6 @@ export const ACTIVITIES: ActivityDef[] = [
         p.activity!.amount = 1;
       }
     },
-    effects: (ctx) => (ctx.state.player.activity?.amount ? { energy: -3, hygiene: -3 } : {}),
     onHour: (ctx) => {
       if (ctx.state.player.activity?.amount) addXp(ctx, { labor: 1.2 });
     },
@@ -817,7 +640,6 @@ export const ACTIVITIES: ActivityDef[] = [
     interruptible: true,
     hours: () => 4,
     unavailable: all(during(10, 22), hasItem("bicycle", "bicycle"), hasItem("phone", "phone")),
-    effects: () => ({ energy: -3, hygiene: -2 }),
     onHour: (ctx) => addXp(ctx, { driving: 0.3, service: 0.3 }),
     onFinish: (ctx) => {
       const c = cityCosts(ctx, ctx.state.player.cityId);
@@ -850,7 +672,6 @@ export const ACTIVITIES: ActivityDef[] = [
     description: "Recycle for a little cash.",
     interruptible: true,
     hours: () => 3,
-    effects: () => ({ hygiene: -3, energy: -1 }),
     onFinish: (ctx) => {
       const c = cityCosts(ctx, ctx.state.player.cityId);
       const pay = Math.round(c.medianWageCents * 3 * ctx.rng.float(0.08, 0.22));
@@ -863,15 +684,15 @@ export const ACTIVITIES: ActivityDef[] = [
     id: "shoplift",
     label: "Shoplift",
     category: "crime",
-    description: "Grab some food and walk out. Small reward, small risk.",
+    description: "Pocket something small and resell it. Small reward, small risk.",
     interruptible: true,
     hours: () => 1,
     unavailable: during(8, 22),
     onFinish: (ctx) => {
       if (commitCrime(ctx, "shoplifting", CRIME_RISK.shoplift)) return;
-      const p = ctx.state.player;
-      p.inventory.meals = Math.min(mealCapacity(ctx), p.inventory.meals + 2);
-      ctx.log("life", "You got away with some food.");
+      const cents = Math.round(cityCosts(ctx, ctx.state.player.cityId).medianWageCents * 1.5);
+      earn(ctx, cents, "other", "Resold shoplifted goods");
+      ctx.log("life", `You got away with it and sold the goods for ${formatMoney(cents)}.`);
     },
   },
   {
@@ -901,7 +722,6 @@ export const ACTIVITIES: ActivityDef[] = [
       const h = hourNow(ctx);
       return h >= 22 || h < 3 ? null : "Only late at night (10 PM–3 AM).";
     },
-    effects: () => ({ energy: -1.5 }),
     onFinish: (ctx) => {
       if (commitCrime(ctx, "burglary", CRIME_RISK.burglary)) return;
       const pay = Math.round(
@@ -940,7 +760,7 @@ export const ACTIVITIES: ActivityDef[] = [
     interruptible: true,
     hours: () => 4,
     unavailable: (ctx) => (ctx.state.player.legal.gangRank > 0 ? null : "You're not in a gang."),
-    effects: () => ({ energy: -1.5, happiness: -0.5 }),
+    effects: () => ({ happiness: -0.5 }),
     onFinish: (ctx) => {
       const p = ctx.state.player;
       if (commitCrime(ctx, "gangJob", CRIME_RISK.gangJob)) return;
@@ -967,7 +787,6 @@ export const ACTIVITIES: ActivityDef[] = [
     system: true,
     interruptible: false,
     hours: () => 48,
-    decay: { food: 0.4, hygiene: 1 },
     effects: () => ({ happiness: -1.5 }),
   },
   {
@@ -978,8 +797,7 @@ export const ACTIVITIES: ActivityDef[] = [
     system: true,
     interruptible: false,
     hours: () => 24,
-    decay: { food: 0, energy: 0.4, hygiene: 0.5 },
-    effects: () => ({ food: 0.2, happiness: -0.4, health: 0.1 }),
+    effects: () => ({ happiness: -0.4, health: 0.1 }),
     onHour: (ctx) => addXp(ctx, { labor: 0.2 }),
   },
   {
@@ -990,22 +808,9 @@ export const ACTIVITIES: ActivityDef[] = [
     system: true,
     interruptible: false,
     hours: () => 12,
-    decay: { food: 0.8, energy: 0.8, hygiene: 1.2 },
     effects: () => ({ happiness: -0.3 }),
   },
   // ---- Emergencies (started by the game)
-  {
-    id: "collapse",
-    label: "Collapsed from exhaustion",
-    category: "rest",
-    description: "You pushed yourself too hard and passed out.",
-    system: true,
-    interruptible: false,
-    hours: () => 6,
-    decay: { food: 0.45, energy: 0, hygiene: 0.5 },
-    effects: (ctx) => ({ energy: sleepRate(ctx) * 0.8, happiness: -1 }),
-    onFinish: (ctx) => streetRobbery(ctx, 6),
-  },
   {
     id: "hospital",
     label: "In the hospital",
@@ -1014,8 +819,7 @@ export const ACTIVITIES: ActivityDef[] = [
     system: true,
     interruptible: false,
     hours: () => 72,
-    decay: { food: 0, energy: 0, hygiene: 0 },
-    effects: () => ({ health: 1.2, food: 1, energy: 2, hygiene: 1 }),
+    effects: () => ({ health: 1.2 }),
     onFinish: (ctx) => {
       const p = ctx.state.player;
       p.needs.health = Math.max(p.needs.health, 45);
@@ -1137,19 +941,14 @@ function forceActivity(ctx: GameContext, id: string): void {
 }
 
 const LOW_NEED_WARNINGS: Partial<Record<keyof Needs, string>> = {
-  food: "You're starving. Eat something soon or your health will suffer.",
-  energy: "You're exhausted. Sleep soon or you'll collapse.",
-  hygiene: "You badly need a wash. Employers and landlords will notice.",
-  health: "Your health is failing. Rest, eat and keep clean.",
+  health:
+    "Your health is failing. Rest, see to your living conditions, or it'll put you in hospital.",
 };
 
 /** Warns once when a need first drops below the danger line, so the player can react in time. */
 function warnLowNeeds(ctx: GameContext, before: Needs): void {
   const n = ctx.state.player.needs;
-  const busySleeping =
-    ctx.state.player.activity?.id === "sleep" || ctx.state.player.activity?.id === "hospital";
   for (const [need, message] of Object.entries(LOW_NEED_WARNINGS) as [keyof Needs, string][]) {
-    if (need === "energy" && busySleeping) continue;
     if (before[need] >= 20 && n[need] < 20) ctx.alert("bad", message);
   }
 }
@@ -1193,29 +992,22 @@ export const activitySystem: System = {
     if ((p.shelterBedUntil ?? 0) <= ctx.state.time) p.shelterBedUntil = null;
 
     handleShifts(ctx);
+    // Nights pass on their own: sleep is no longer something to manage.
+    if (!p.activity && hourNow(ctx) === 23) forceActivity(ctx, "night");
 
     const def = p.activity ? activityById(p.activity.id) : undefined;
     const before = { ...p.needs };
-    applyHourlyNeeds(ctx, def?.decay ?? {}, def?.effects?.(ctx) ?? {});
+    applyHourlyNeeds(ctx, def?.effects?.(ctx) ?? {});
     warnLowNeeds(ctx, before);
     def?.onHour?.(ctx);
 
     const current = p.activity?.id;
-    if (p.needs.health <= 0 && current !== "hospital") {
+    // Critical health (an injury, or living conditions that wore the body down) means hospital.
+    if (p.needs.health < 5 && current !== "hospital") {
       if (fatalCollapse(ctx)) return;
       ctx.alert("bad", "You collapsed and were rushed to the hospital.");
       if (p.activity?.id === "work" && p.job) p.job.performance -= 5;
       forceActivity(ctx, "hospital");
-      return;
-    }
-    if (
-      p.needs.energy <= 0 &&
-      current !== "sleep" &&
-      current !== "collapse" &&
-      current !== "hospital"
-    ) {
-      ctx.alert("bad", "You collapsed from exhaustion.");
-      forceActivity(ctx, "collapse");
       return;
     }
 

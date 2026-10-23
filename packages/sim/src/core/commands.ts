@@ -39,6 +39,7 @@ import type { CredentialId } from "../education/courses";
 import { chooseEventOption } from "../events/storyEvents";
 import { repayDebt, takeLoan } from "../finance/finance";
 import { cancelActivity, startActivity } from "../life/activities";
+import { setLifestyle, type Lifestyle } from "../life/lifestyle";
 import { moveBackHome, rentUnit } from "../life/housing";
 import type { ItemId } from "../life/items";
 import { castVote, proposeBill, signBill } from "../politics/bills";
@@ -118,6 +119,7 @@ export type Command =
   | { type: "job.setAutoWork"; enabled: boolean }
   | { type: "housing.rent"; unit: UnitType }
   | { type: "housing.moveBackHome" }
+  | { type: "lifestyle.set"; lifestyle: Lifestyle }
   | { type: "shop.buy"; item: ItemId }
   | { type: "shop.sell"; item: ItemId }
   | { type: "education.enroll"; course: CredentialId }
@@ -220,6 +222,7 @@ export const commandHandlers: CommandHandlers = {
   },
   "housing.rent": (ctx, cmd) => alive(ctx) ?? rentUnit(ctx, cmd.unit),
   "housing.moveBackHome": (ctx) => alive(ctx) ?? moveBackHome(ctx),
+  "lifestyle.set": (ctx, cmd) => alive(ctx) ?? setLifestyle(ctx, cmd.lifestyle),
   "shop.buy": (ctx, cmd) => alive(ctx) ?? buyItem(ctx, cmd.item),
   "shop.sell": (ctx, cmd) => alive(ctx) ?? sellItem(ctx, cmd.item),
   "education.enroll": (ctx, cmd) => alive(ctx) ?? enroll(ctx, cmd.course),

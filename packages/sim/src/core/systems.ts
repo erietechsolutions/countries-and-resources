@@ -3,6 +3,7 @@ import { financeSystem } from "../finance/finance";
 import { activitySystem } from "../life/activities";
 import { familySystem } from "../life/family";
 import { housingSystem } from "../life/housing";
+import { lifestyleSystem } from "../life/lifestyle";
 import { immigrationSystem } from "../life/moving";
 import { businessSystem } from "../business/business";
 import { rivalsSystem } from "../ai/rivals";
@@ -55,6 +56,7 @@ export const newYearSystem: System = {
  */
 export const defaultSystems: readonly System[] = [
   activitySystem,
+  lifestyleSystem,
   jobsSystem,
   financeSystem,
   housingSystem,
@@ -76,6 +78,7 @@ export const defaultSystems: readonly System[] = [
 /** Systems about the player's personal life, which Leader mode leaves out. */
 const LIFE_SYSTEMS = new Set<System>([
   activitySystem,
+  lifestyleSystem,
   jobsSystem,
   financeSystem,
   housingSystem,

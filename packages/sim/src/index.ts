@@ -23,6 +23,7 @@ export * from "./life/family";
 export * from "./life/housing";
 export * from "./life/items";
 export * from "./life/needs";
+export * from "./life/lifestyle";
 export * from "./life/shopping";
 export * from "./life/types";
 export * from "./work/companies";

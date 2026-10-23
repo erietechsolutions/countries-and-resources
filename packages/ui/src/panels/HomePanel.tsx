@@ -3,7 +3,6 @@ import {
   cityCosts,
   formatMoney,
   ITEMS,
-  mealCapacity,
   MOVE_BACK_RELATIONSHIP,
   personalityLabel,
   rentalListings,
@@ -30,7 +29,7 @@ export function HomePanel() {
           <p>
             <strong>Your parents' basement.</strong>{" "}
             <span className="muted small">
-              Free rent and meals, as long as they're happy with you.
+              Free rent and cheaper living, as long as they're happy with you.
             </span>
           </p>
         )}
@@ -53,9 +52,6 @@ export function HomePanel() {
             </span>
           </p>
         )}
-        <p className="muted small">
-          Food stored: {p.inventory.meals}/{mealCapacity(game)} meals
-        </p>
         {h.kind !== "parents" && family.length > 0 && (
           <button
             className="btn small"

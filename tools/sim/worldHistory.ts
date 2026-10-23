@@ -33,7 +33,7 @@ export function runWorld(seed: number, years: number): WorldHistory {
       character: {
         firstName: "World",
         lastName: "Watcher",
-        gender: "nonbinary",
+        gender: "female",
         appearance: {
           skinTone: "Medium",
           hairColor: "Black",

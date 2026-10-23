@@ -55,7 +55,7 @@ const CASH_0: ChoiceOption<number> = {
 const HOUSING_PARENTS: ChoiceOption<StartingHousing> = {
   value: "parents",
   label: "Parents' house",
-  description: "Living in your parents' basement: a roof, food, and family expectations.",
+  description: "Living in your parents' basement: a roof, cheap living, and family expectations.",
   available: true,
 };
 const HOUSING_HOMELESS: ChoiceOption<StartingHousing> = {
@@ -131,7 +131,7 @@ export const MODES: Record<GameMode, ModeDefinition> = {
   hardEconomic: {
     id: "hardEconomic",
     name: "Hard Economic",
-    tagline: "Nothing. Nobody. Nowhere to sleep.",
+    tagline: "Nothing. Nobody. Nowhere to live.",
     description:
       "Economic mode with no safety net: you start at 18 with $0, homeless, on the real-world map.",
     available: true,

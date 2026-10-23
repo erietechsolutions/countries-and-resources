@@ -37,20 +37,6 @@ const FIRST: Record<Gender, string[]> = {
     "Nadia",
     "Grace",
   ],
-  nonbinary: [
-    "Alex",
-    "Jordan",
-    "Riley",
-    "Sam",
-    "Taylor",
-    "Morgan",
-    "Quinn",
-    "Avery",
-    "Rowan",
-    "Kai",
-    "Sky",
-    "Jamie",
-  ],
 };
 export const LAST_NAMES = [
   "Smith",

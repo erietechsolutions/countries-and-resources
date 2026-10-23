@@ -130,4 +130,6 @@ export interface DailyFlags {
   familyTalk: boolean;
   foodBank: boolean;
   jobSearch: boolean;
+  /** Couldn't afford even a frugal day: health, looks and mood suffer. */
+  wentWithout?: boolean;
 }

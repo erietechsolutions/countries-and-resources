@@ -123,7 +123,7 @@ export function economicConfig(overrides: Partial<GameConfig> = {}): GameConfig 
 export const testCharacter: CharacterInput = {
   firstName: "Sam",
   lastName: "Rivera",
-  gender: "nonbinary",
+  gender: "female",
   appearance: {
     skinTone: "Medium",
     hairColor: "Black",

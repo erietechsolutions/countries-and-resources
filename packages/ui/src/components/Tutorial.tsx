@@ -16,12 +16,12 @@ function steps(homeless: boolean): Step[] {
     {
       title: "Welcome to your new life",
       body: homeless
-        ? "You're 18, broke and homeless. Survive first: keep your needs up, find a bed, then find work."
+        ? "You're 18, broke and homeless. Get an address, find work, and save for a place of your own."
         : "You're 18 and living in your parents' basement. They expect you to start working or studying soon.",
     },
     {
-      title: "Your needs",
-      body: "Food, energy, hygiene, health and happiness all matter. Let them hit zero and you'll collapse or end up in the hospital.",
+      title: "Your living standard",
+      body: "Food, clothes and the basics come out of your money every day. Choose how well you live in the Life tab: living better costs more, but keeps you healthier, happier and more presentable to employers.",
       tab: "life",
     },
     {
@@ -32,7 +32,7 @@ function steps(homeless: boolean): Step[] {
     {
       title: homeless ? "Getting off the street" : "Finding work",
       body: homeless
-        ? "Shelters give you a bed, dinner, a shower and an address for job applications, if there's space. Soup kitchens feed you for free."
+        ? "Shelters give you a safer bed and an address for job applications, if there's space. Day labor, cans and panhandling bring in the first dollars."
         : "Look for work once a day. Offers appear in the Work tab. Once hired, you'll head to work automatically when shifts start.",
       tab: homeless ? "home" : "work",
     },

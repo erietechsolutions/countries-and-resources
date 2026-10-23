@@ -61,7 +61,6 @@ export function hireChance(ctx: GameContext, occ: OccupationDef): number {
   if (!p.inventory.items.includes("phone")) chance *= 0.6;
   if (p.inventory.items.includes("interviewClothes")) chance *= 1.25;
   chance *= 0.7 + p.needs.happiness / 330;
-  if (p.needs.energy < 20) chance *= 0.7;
   // Newcomers without citizenship face language and paperwork hurdles.
   if (!p.citizenship.includes(country.id)) chance *= 0.8;
   // A good name with employers and fellow workers helps; a criminal reputation hurts.

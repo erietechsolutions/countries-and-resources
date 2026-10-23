@@ -1,4 +1,5 @@
 import { emptyConflict } from "../conflict/types";
+import { hashString } from "./rng";
 import { emptyLegal } from "../crime/crime";
 import { emptyDynasty } from "../life/aging";
 import { emptyStory } from "../events/storyEvents";
@@ -37,4 +38,10 @@ export function normalizeState(state: GameState): void {
   p.visaApplication ??= null;
   p.politics ??= emptyPlayerPolitics();
   p.legal ??= emptyLegal();
+  // Gender options are male and female; older saves may hold a third value.
+  const binary = (g: string, key: string) =>
+    g === "male" || g === "female" ? g : hashString(key) % 2 === 0 ? "male" : "female";
+  p.gender = binary(p.gender, `player:${p.firstName}`);
+  for (const person of s.people) person.gender = binary(person.gender, person.id);
+  p.lifestyle ??= p.housing.kind === "homeless" ? "frugal" : "modest";
 }

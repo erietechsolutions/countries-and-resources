@@ -682,7 +682,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
       {
         label: "Prepare all day",
         apply: (ctx) => {
-          ctx.state.player.needs.energy = Math.max(5, ctx.state.player.needs.energy - 30);
+          ctx.state.player.needs.happiness = Math.max(5, ctx.state.player.needs.happiness - 5);
           const c = ctx.state.player.politics.candidacy;
           if (c) c.effort += 25;
           return "You were sharp and ready. It showed.";
@@ -784,7 +784,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
       {
         label: "Help your neighbors",
         apply: (ctx) => {
-          ctx.state.player.needs.energy = Math.max(5, ctx.state.player.needs.energy - 25);
+          ctx.state.player.needs.health = Math.max(5, ctx.state.player.needs.health - 5);
           adjustReputation(ctx, "community", 4);
           return "You spent the night hauling sandbags. People remember that.";
         },

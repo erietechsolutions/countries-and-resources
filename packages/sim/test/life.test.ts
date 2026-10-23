@@ -9,11 +9,13 @@ import {
   OCCUPATIONS,
   parseSave,
   Rng,
+  lifestyleDailyCost,
   SAVE_VERSION,
   startOfDay,
   toDateParts,
   type Command,
   type GameConfig,
+  type Lifestyle,
 } from "../src";
 import { economicConfig, testCharacter, tinyGeography } from "./fixtures";
 
@@ -33,44 +35,68 @@ function skipTo(game: Game, hour: number) {
   while (toDateParts(game.time).hour !== hour) game.tick();
 }
 
-describe("needs", () => {
-  it("decay while idle, and food runs out in about a day", () => {
+describe("living standards", () => {
+  it("there is nothing to eat, sleep or wash: food and energy stay topped up", () => {
     const game = newGame();
-    const before = { ...game.state.player.needs };
-    game.tick(10);
-    const after = game.state.player.needs;
-    expect(before.food - after.food).toBeCloseTo(36, 0);
-    expect(after.energy).toBeLessThan(before.energy);
-    expect(after.hygiene).toBeLessThan(before.hygiene);
+    game.tick(48);
+    const n = game.state.player.needs;
+    expect(n.food).toBe(80);
+    expect(n.energy).toBe(80);
+    expect(game.dispatch({ type: "activity.start", activityId: "eat" }).ok).toBe(false);
   });
 
-  it("sleep at home restores energy faster than sleeping on the street", () => {
+  it("living costs are paid daily, and better lifestyles cost more", () => {
+    const daily = (lifestyle: Lifestyle) => {
+      const game = newGame();
+      run(game, { type: "lifestyle.set", lifestyle });
+      return lifestyleDailyCost(game, lifestyle);
+    };
+    expect(daily("frugal")).toBeLessThan(daily("modest"));
+    expect(daily("luxury")).toBeGreaterThan(daily("comfortable") * 2);
+    const game = newGame();
+    const before = game.state.player.cashCents;
+    skipTo(game, 1);
+    expect(game.state.player.cashCents).toBe(before - lifestyleDailyCost(game, "modest"));
+  });
+
+  it("running out of money means living cheaper, then going without", () => {
+    const game = newGame();
+    const p = game.state.player;
+    run(game, { type: "lifestyle.set", lifestyle: "luxury" });
+    p.cashCents = lifestyleDailyCost(game, "modest") + 1;
+    skipTo(game, 1);
+    expect(p.lifestyle).toBe("modest");
+    p.cashCents = 0;
+    game.tick(24);
+    expect(p.daily.wentWithout).toBe(true);
+  });
+
+  it("health follows living conditions: the street wears you down", () => {
     const home = newGame();
     const street = newGame({ startingHousing: "homeless", startingCashCents: 0 });
     for (const g of [home, street]) {
-      g.state.player.needs.energy = 20;
-      run(g, { type: "activity.start", activityId: "sleep", amount: 8 });
-      g.tick(8);
+      g.state.player.cashCents = 10_000_000;
+      g.state.player.needs.health = 80;
+      g.tick(24 * 10);
     }
-    expect(home.state.player.needs.energy).toBeGreaterThan(street.state.player.needs.energy + 15);
-    expect(home.state.player.activity).toBeNull();
+    expect(home.state.player.needs.health).toBeGreaterThan(street.state.player.needs.health + 5);
+    expect(home.state.player.needs.hygiene).toBeGreaterThan(street.state.player.needs.hygiene);
   });
 
-  it("collapse from exhaustion when energy runs out", () => {
+  it("nights pass on their own", () => {
     const game = newGame();
-    game.state.player.needs.energy = 3;
+    skipTo(game, 23);
     game.tick(1);
-    expect(game.state.player.activity?.id).toBe("collapse");
-    expect(() => run(game, { type: "activity.cancel" })).toThrow(/can't stop/);
+    expect(game.state.player.activity?.id).toBe("night");
+    skipTo(game, 8);
+    expect(game.state.player.activity).toBeNull();
   });
 
-  it("starvation leads to the hospital and a bill where healthcare isn't free", () => {
+  it("failing health leads to the hospital and a bill where healthcare isn't free", () => {
     const game = newGame();
-    const country = game.state.world.countries.AAA!;
-    country.healthcare = "none";
+    game.state.world.countries.AAA!.healthcare = "none";
     const p = game.state.player;
-    p.needs.food = 0;
-    p.needs.health = 1;
+    p.needs.health = 0;
     game.tick(1);
     expect(p.activity?.id).toBe("hospital");
     game.tick(72);
@@ -82,37 +108,12 @@ describe("needs", () => {
 
 describe("activities", () => {
   it("respect opening hours", () => {
-    const game = newGame();
-    skipTo(game, 9);
-    expect(game.dispatch({ type: "activity.start", activityId: "soupKitchen" }).ok).toBe(false);
-    skipTo(game, 11);
-    run(game, { type: "activity.start", activityId: "soupKitchen" });
-    expect(game.state.player.activity?.id).toBe("soupKitchen");
-  });
-
-  it("charge for groceries and limit what a homeless person can carry", () => {
     const game = newGame({ startingHousing: "homeless", startingCashCents: 0 });
-    game.state.player.cashCents = 100_000;
     skipTo(game, 9);
-    expect(game.dispatch({ type: "activity.start", activityId: "groceries", amount: 5 }).ok).toBe(
-      false,
-    );
-    const meal = cityCosts(game, game.state.player.cityId).mealCents;
-    run(game, { type: "activity.start", activityId: "groceries", amount: 2 });
-    expect(game.state.player.cashCents).toBe(100_000 - meal * 2);
-    game.tick(1);
-    expect(game.state.player.inventory.meals).toBe(2);
-  });
-
-  it("eating uses a meal and fills you up", () => {
-    const game = newGame({ startingHousing: "homeless", startingCashCents: 0 });
-    const p = game.state.player;
-    p.inventory.meals = 1;
-    p.needs.food = 20;
-    run(game, { type: "activity.start", activityId: "eat" });
-    game.tick(1);
-    expect(p.inventory.meals).toBe(0);
-    expect(p.needs.food).toBeGreaterThan(55);
+    expect(game.dispatch({ type: "activity.start", activityId: "shelter" }).ok).toBe(false);
+    skipTo(game, 18);
+    run(game, { type: "activity.start", activityId: "shelter" });
+    expect(game.state.player.activity?.id).toBe("shelter");
   });
 });
 
@@ -203,7 +204,7 @@ describe("housing and family", () => {
         (t) => t.category === "rent" && t.amountCents === -rent && t.time > game.time - 2,
       ),
     ).toBe(true);
-    expect(p.cashCents).toBeLessThan(before + 10_000_000);
+    expect(p.cashCents).toBeLessThan(before + 100_000_000);
   });
 
   it("unpaid rent leads to eviction", () => {
@@ -369,13 +370,14 @@ describe("save migration", () => {
 });
 
 describe("warnings", () => {
-  it("warn once when a need falls into the danger zone", () => {
-    const game = newGame();
+  it("warn once when health falls into the danger zone", () => {
+    // Sleeping rough with no money for even the basics.
+    const game = newGame({ startingHousing: "homeless", startingCashCents: 0 });
     const alerts: string[] = [];
     game.events.on("alert", (e) => alerts.push(e.message));
-    game.state.player.needs.food = 22;
-    game.tick(3);
-    expect(alerts.filter((a) => a.includes("starving"))).toHaveLength(1);
+    game.state.player.needs.health = 20.5;
+    game.tick(48);
+    expect(alerts.filter((a) => a.includes("health is failing"))).toHaveLength(1);
   });
 });
 

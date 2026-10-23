@@ -6,7 +6,8 @@ import {
   CATEGORY_LABELS,
   formatMoney,
   formatTime,
-  mealCapacity,
+  LIFESTYLES,
+  lifestyleDailyCost,
   NEED_LABELS,
   restingPlace,
   type ActivityCategory,
@@ -16,17 +17,8 @@ import {
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
 
-const NEED_ORDER: NeedId[] = ["food", "energy", "hygiene", "health", "happiness"];
-const CATEGORY_ORDER: ActivityCategory[] = [
-  "food",
-  "rest",
-  "hygiene",
-  "work",
-  "money",
-  "social",
-  "home",
-  "growth",
-];
+const NEED_ORDER: NeedId[] = ["health", "hygiene", "happiness"];
+const CATEGORY_ORDER: ActivityCategory[] = ["rest", "work", "money", "social", "home", "growth"];
 
 const PLACE_LABELS = {
   home: "at home",
@@ -34,14 +26,33 @@ const PLACE_LABELS = {
   street: "on the street",
 } as const;
 
+/** Health, presentation and mood, plus how well the player chooses to live. */
 export function NeedsCard() {
-  const { game } = useGameUi();
-  const n = game.state.player.needs;
+  const { game, act } = useGameUi();
+  const p = game.state.player;
+  const n = p.needs;
   return (
     <section className="card needs">
       {NEED_ORDER.map((id) => (
         <Meter key={id} label={NEED_LABELS[id]} value={n[id]} compact />
       ))}
+      <h5>Living standard</h5>
+      <div className="row wrap">
+        {LIFESTYLES.map((l) => (
+          <button
+            key={l.id}
+            className={p.lifestyle === l.id ? "chip active" : "chip"}
+            title={l.description}
+            onClick={() => act({ type: "lifestyle.set", lifestyle: l.id })}
+          >
+            {l.label} · {formatMoney(lifestyleDailyCost(game, l.id), true)}/day
+          </button>
+        ))}
+      </div>
+      <p className="muted small">
+        {LIFESTYLES.find((l) => l.id === p.lifestyle)?.description}
+        {p.daily.wentWithout && " You couldn't afford even the basics today."}
+      </p>
     </section>
   );
 }
@@ -153,11 +164,7 @@ export function LifePanel() {
             Show unavailable
           </label>
         </div>
-        <p className="muted small">
-          You'd sleep {PLACE_LABELS[restingPlace(game)]} · Food stored: {p.inventory.meals}/
-          {mealCapacity(game)} meals
-          {p.housing.kind === "parents" && " (family meals are free)"}
-        </p>
+        <p className="muted small">Tonight you'll sleep {PLACE_LABELS[restingPlace(game)]}.</p>
         {CATEGORY_ORDER.map((cat) => {
           const defs = visible.filter(
             (d) =>

@@ -50,7 +50,6 @@ const STEPS: { id: Step; label: string }[] = [
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
-  { value: "nonbinary", label: "Non-binary" },
 ];
 
 const APPEARANCE_LABELS: Record<AppearanceKey, string> = {
@@ -65,7 +64,7 @@ const uiRandom = () => new Rng(randomSeed(Math.random));
 
 function randomCharacter(): CharacterInput {
   const rng = uiRandom();
-  const gender = rng.pick<Gender>(["female", "male", "nonbinary"]);
+  const gender = rng.pick<Gender>(["female", "male"]);
   const appearance = Object.fromEntries(
     (Object.keys(APPEARANCE_OPTIONS) as AppearanceKey[]).map((k) => [
       k,
