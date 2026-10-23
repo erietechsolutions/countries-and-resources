@@ -34,19 +34,32 @@
 
 ## Game modes
 
-|                | Normal (Coming Soon)    | Economic                                      | Hard Economic                 |
-| -------------- | ----------------------- | --------------------------------------------- | ----------------------------- |
-| Start date     | Jan 2022 or Jan 2024    | Real date the save is created                 | Real date the save is created |
-| World data     | Real US data            | Procedural                                    | Procedural                    |
-| Map            | Real                    | Real or Random (Random: Coming Soon until M8) | Real only                     |
-| Start location | Any of the 50 US states | Anywhere                                      | Anywhere                      |
-| Money          | $2,000 or $0            | $2,000 or $0                                  | $0 (locked)                   |
-| Home           | Parents' or homeless    | Parents' or homeless                          | Homeless (locked)             |
-| Age            | 18                      | 18                                            | 18                            |
+|                | Normal (Coming Soon)    | Economic                      | Hard Economic                 | Leader                         |
+| -------------- | ----------------------- | ----------------------------- | ----------------------------- | ------------------------------ |
+| Start date     | Jan 2022 or Jan 2024    | Real date the save is created | Real date the save is created | Real date the save is created  |
+| World data     | Real US data            | Procedural                    | Procedural                    | Procedural                     |
+| Map            | Real                    | Real or Random                | Real only                     | Real or Random                 |
+| Start location | Any of the 50 US states | Anywhere                      | Anywhere                      | Capital of any country         |
+| Money          | $2,000 or $0            | $2,000 or $0                  | $0 (locked)                   | None (the country's budget)    |
+| Home           | Parents' or homeless    | Parents' or homeless          | Homeless (locked)             | None                           |
+| Age            | 18                      | 18                            | 18                            | 50, already head of government |
 
 Mode rules live in `packages/sim/src/modes/modes.ts`, in one place. The wizard renders them
 directly: one option means the choice is locked, and `available: false` shows "Coming Soon".
 `validateConfig` rejects anything a mode doesn't allow, regardless of what the UI sends.
+
+### Leader mode
+
+Leader mode (`leader/leader.ts`) runs the same engine without the player's personal life:
+`systemsFor` leaves out needs and activities, jobs, personal finance, housing, family,
+immigration, social life, player businesses, personal crime and life story events. The player
+starts in the capital as head of government of the chosen country, leading its ruling party.
+Approval follows the country (national mood, stability, the economy and war), and in Leader mode
+the player's party gains or loses support with their approval, with some fatigue the longer it
+rules. A sitting leader is automatically on the ballot for their own re-election. The rule ends
+when the player no longer holds the office: a lost presidential election, a lost legislature, a
+revolution, conquest, or death without a hereditary successor. `state.reign` records the
+country's vital signs at the start, and the game shows the record against them.
 
 ## Economic-mode world generation
 

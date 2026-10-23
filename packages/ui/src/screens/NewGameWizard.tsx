@@ -28,6 +28,8 @@ import {
   type ProvinceId,
   type StartingHousing,
   type WorldGeography,
+  LEADER_STARTING_AGE,
+  STARTING_AGE,
 } from "@cr/sim";
 import { Avatar } from "../components/Avatar";
 import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards";
@@ -195,7 +197,7 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
           <div className="narrow">
             <h3 className="step-title">Starting conditions</h3>
             <p className="muted">
-              You start at 18 years old on{" "}
+              {def.life ? "You start at 18 years old" : "You take office at 50"} on{" "}
               <strong>{formatDate(gameDateFromRealDate(new Date()))}</strong>, the day this save is
               created.
             </p>
@@ -206,20 +208,24 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
               value={mapType}
               onChange={setMapType}
             />
-            <OptionCards<number>
-              label="Starting money"
-              lockedReason={`Locked in ${def.name}`}
-              options={def.startingCash}
-              value={cash}
-              onChange={setCash}
-            />
-            <OptionCards<StartingHousing>
-              label="Starting home"
-              lockedReason={`Locked in ${def.name}`}
-              options={def.startingHousing}
-              value={housing}
-              onChange={setHousing}
-            />
+            {def.life && (
+              <>
+                <OptionCards<number>
+                  label="Starting money"
+                  lockedReason={`Locked in ${def.name}`}
+                  options={def.startingCash}
+                  value={cash}
+                  onChange={setCash}
+                />
+                <OptionCards<StartingHousing>
+                  label="Starting home"
+                  lockedReason={`Locked in ${def.name}`}
+                  options={def.startingHousing}
+                  value={housing}
+                  onChange={setHousing}
+                />
+              </>
+            )}
             <fieldset className="option-group">
               <legend>World seed</legend>
               <div className="row">
@@ -246,7 +252,13 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
         )}
         {step === "location" &&
           (geography && world ? (
-            <LocationStep geography={geography} world={world} cityId={cityId} onCity={setCityId} />
+            <LocationStep
+              geography={geography}
+              world={world}
+              cityId={cityId}
+              onCity={setCityId}
+              leader={!def.life}
+            />
           ) : (
             <div className="center muted">{loadError ?? "Loading the world map…"}</div>
           ))}
@@ -261,7 +273,8 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
               <dl>
                 <dt>Name</dt>
                 <dd>
-                  {character.firstName} {character.lastName}, age 18
+                  {character.firstName} {character.lastName}, age{" "}
+                  {def.life ? STARTING_AGE : LEADER_STARTING_AGE}
                 </dd>
                 <dt>Mode</dt>
                 <dd>{def.name}</dd>
@@ -272,10 +285,25 @@ export function NewGameWizard({ onCancel, onStart }: Props) {
                 </dd>
                 <dt>Start date</dt>
                 <dd>{formatDate(gameDateFromRealDate(new Date()))}</dd>
-                <dt>Money</dt>
-                <dd>{formatMoney(cash)}</dd>
-                <dt>Home</dt>
-                <dd>{def.startingHousing.find((h) => h.value === housing)?.label}</dd>
+                {def.life ? (
+                  <>
+                    <dt>Money</dt>
+                    <dd>{formatMoney(cash)}</dd>
+                    <dt>Home</dt>
+                    <dd>{def.startingHousing.find((h) => h.value === housing)?.label}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt>Leading</dt>
+                    <dd>
+                      {
+                        geography.countries.find(
+                          (c) => c.id === geography.cities[cityId]!.countryId,
+                        )?.name
+                      }
+                    </dd>
+                  </>
+                )}
               </dl>
             </div>
             <CitySummary geo={geography} world={world} cityId={cityId} />
@@ -364,13 +392,15 @@ interface LocationProps {
   world: NonNullable<ReturnType<typeof buildWorld>>;
   cityId: CityId | null;
   onCity(id: CityId | null): void;
+  /** Leader mode: picking a city picks the country to lead. */
+  leader?: boolean;
 }
 
 function normalize(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-function LocationStep({ geography, world, cityId, onCity }: LocationProps) {
+function LocationStep({ geography, world, cityId, onCity, leader = false }: LocationProps) {
   const initialCity = cityId !== null ? geography.cities[cityId] : undefined;
   const [provinceId, setProvinceId] = useState<ProvinceId | null>(initialCity?.provinceId ?? null);
   const [query, setQuery] = useState("");
@@ -484,14 +514,25 @@ function LocationStep({ geography, world, cityId, onCity }: LocationProps) {
             )}
           </ul>
         )}
-        {cityId !== null ? (
+        {cityId !== null && leader ? (
+          <>
+            <p className="hint">The country you will lead:</p>
+            <CountryCard
+              geo={geography}
+              world={world}
+              countryId={geography.cities[cityId]!.countryId}
+            />
+          </>
+        ) : cityId !== null ? (
           <section className="card highlight">
             <h4>Your starting city</h4>
             <CitySummary geo={geography} world={world} cityId={cityId} />
           </section>
         ) : (
           <p className="hint">
-            Search, or click the map to explore. Then pick the city where your story begins.
+            {leader
+              ? "Search, or click the map to explore. Pick any city in the country you want to lead: you'll govern from its capital."
+              : "Search, or click the map to explore. Then pick the city where your story begins."}
           </p>
         )}
         {provinceId !== null && (
@@ -501,10 +542,13 @@ function LocationStep({ geography, world, cityId, onCity }: LocationProps) {
             provinceId={provinceId}
             selectedCityId={cityId}
             onSelectCity={(id) => selectCity(id, 0)}
-            cityActionLabel="Start here"
+            cityActionLabel={leader ? "Lead this country" : "Start here"}
           />
         )}
-        {countryId && <CountryCard geo={geography} world={world} countryId={countryId} />}
+        {countryId &&
+          !(leader && cityId !== null && geography.cities[cityId]!.countryId === countryId) && (
+            <CountryCard geo={geography} world={world} countryId={countryId} />
+          )}
       </aside>
       <MapView
         geography={geography}

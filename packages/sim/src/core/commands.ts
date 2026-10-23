@@ -162,7 +162,11 @@ export const commandHandlers: CommandHandlers = {
   "business.raise": (ctx, cmd) => raiseInvestment(ctx, cmd.businessId, cmd.sharePercent),
   "business.sell": (ctx, cmd) => sellBusiness(ctx, cmd.businessId),
   "business.close": (ctx, cmd) => closeBusiness(ctx, cmd.businessId),
-  "move.to": (ctx, cmd) => alive(ctx) ?? moveTo(ctx, cmd.cityId, cmd.illegal ?? false),
+  "move.to": (ctx, cmd) =>
+    alive(ctx) ??
+    (ctx.state.config.mode === "leader"
+      ? "A leader governs from the capital."
+      : moveTo(ctx, cmd.cityId, cmd.illegal ?? false)),
   "immigration.apply": (ctx, cmd) => alive(ctx) ?? applyForVisa(ctx, cmd.countryId, cmd.visa),
   "immigration.naturalize": (ctx) => alive(ctx) ?? naturalize(ctx),
   "politics.join": (ctx, cmd) => alive(ctx) ?? joinParty(ctx, cmd.partyId),

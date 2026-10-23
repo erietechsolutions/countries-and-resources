@@ -2,7 +2,8 @@
 
 A single-player (multiplayer planned) life simulation and nation-building game. You start as an
 18-year-old with little or nothing and rise through work, business, politics or revolution,
-eventually founding and running your own country.
+eventually founding and running your own country. Or play Leader mode: start as the head of
+government of any country and try to stay in power.
 
 Runs in the browser, or as a desktop app for Linux and Windows (built with Tauri).
 

@@ -10,7 +10,7 @@ import { commandHandlers, type Command, type CommandHandler, type CommandResult 
 import { EventBus, type AlertLevel, type LogCategory } from "./events";
 import { Rng } from "./rng";
 import { MAX_LOG_ENTRIES, type GameState } from "./state";
-import { defaultSystems, type System } from "./systems";
+import { systemsFor, type System } from "./systems";
 
 /** What systems and command handlers get to work with. */
 export interface GameContext {
@@ -37,7 +37,7 @@ export class Game implements GameContext {
   constructor(
     readonly state: GameState,
     geography: WorldGeography,
-    private readonly systems: readonly System[] = defaultSystems,
+    private readonly systems: readonly System[] = systemsFor(state.config.mode),
   ) {
     if (state.world.geographyId !== geography.id) {
       throw new Error(

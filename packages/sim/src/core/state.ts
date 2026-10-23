@@ -5,6 +5,7 @@ import type { Rival } from "../ai/rivals";
 import type { ConflictState } from "../conflict/types";
 import type { StoryState } from "../events/storyEvents";
 import type { DynastyState, PendingSuccession } from "../life/aging";
+import type { Reign } from "../leader/leader";
 import type { PoliticsState } from "../politics/types";
 import type { Person } from "../social/types";
 import type { GameConfig } from "../modes/modes";
@@ -34,6 +35,8 @@ export interface GameState {
   dynasty: DynastyState;
   /** Set while the player's character is dead and an heir hasn't been chosen. */
   succession: PendingSuccession | null;
+  /** Leader mode: the player's time in power. */
+  reign: Reign | null;
   nextBusinessId: number;
   /** Most recent messages, newest last. */
   log: LogEntry[];

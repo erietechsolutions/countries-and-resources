@@ -9,6 +9,9 @@ import { rivalsSystem } from "../ai/rivals";
 import { conflictSystem } from "../conflict/system";
 import { crimeSystem } from "../crime/crime";
 import { agingSystem } from "../life/aging";
+import { leaderSystem } from "../leader/leader";
+import type { GameMode } from "../modes/modes";
+import { MODES } from "../modes/modes";
 import { storySystem } from "../events/storyEvents";
 import { politicsSystem } from "../politics/system";
 import { socialSystem } from "../social/social";
@@ -69,3 +72,23 @@ export const defaultSystems: readonly System[] = [
   birthdaySystem,
   newYearSystem,
 ];
+
+/** Systems about the player's personal life, which Leader mode leaves out. */
+const LIFE_SYSTEMS = new Set<System>([
+  activitySystem,
+  jobsSystem,
+  financeSystem,
+  housingSystem,
+  familySystem,
+  immigrationSystem,
+  socialSystem,
+  businessSystem,
+  crimeSystem,
+  storySystem,
+]);
+
+/** The systems a game in this mode runs. */
+export function systemsFor(mode: GameMode): readonly System[] {
+  if (MODES[mode]?.life !== false) return defaultSystems;
+  return [...defaultSystems.filter((s) => !LIFE_SYSTEMS.has(s)), leaderSystem];
+}

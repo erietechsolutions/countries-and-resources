@@ -7,18 +7,27 @@ import { npcProposals, resolveBills } from "./bills";
 import { runElections, scheduleElections } from "./elections";
 import { ensurePolitics, isDemocratic, playerOffices, runBudget } from "./government";
 import { playerCountry, promoteInParty } from "./party";
+import { isLeaderMode, LEADER_PROPOSALS, leaderApprovalTarget } from "../leader/leader";
 
 /** Party popularity shifts with how people feel about the country, plus a little noise. */
 function driftPopularity(ctx: GameContext): void {
   const pol = ctx.state.player.politics;
+  const leader = isLeaderMode(ctx);
   for (const country of Object.values(ctx.state.world.countries)) {
     if (country.parties.length === 0 || country.population === 0) continue;
     const mood = country.pops.reduce((s, p) => s + p.satisfaction * p.share, 0);
     for (const party of country.parties) {
       let change = ctx.rng.normal(0, 0.004);
-      if (party.id === country.rulingPartyId) change += ((mood - 50) / 50) * 0.01;
+      const playerLeads = party.id === pol.partyId && pol.rank >= 5;
+      if (leader && playerLeads) {
+        // A national leader's party rises and falls with their approval, and voters tire of it.
+        change +=
+          ((pol.approval - 50) / 50) * 0.008 - 0.002 - Math.max(0, party.popularity - 0.6) * 0.03;
+      } else if (party.id === country.rulingPartyId) {
+        change += ((mood - 50) / 50) * 0.01;
+      }
       // A party led by the player grows with the player's fame and good name.
-      if (party.id === pol.partyId && pol.rank >= 5) {
+      if (!leader && playerLeads) {
         const rep = ctx.state.player.reputation;
         change += 0.002 * (rep.fame / 20 + Math.max(0, rep.community + rep.workers) / 80);
       }
@@ -113,18 +122,22 @@ export const politicsSystem: System = {
     const p = ctx.state.player;
     const offices = playerOffices(ctx);
     for (const o of offices) transact(ctx, o.salaryCents, "wages", `Salary: ${o.title}`);
-    p.politics.proposalsLeft =
-      offices.length > 0
+    const leader = isLeaderMode(ctx) && offices.some((o) => o.kind === "headOfGovernment");
+    p.politics.proposalsLeft = leader
+      ? LEADER_PROPOSALS
+      : offices.length > 0
         ? Math.min(3, offices.length + (offices.some((o) => o.seats === 1) ? 1 : 0))
         : 0;
     if (offices.length > 0) {
       const rep = p.reputation;
       const economy = playerCountry(ctx).economy.phase;
-      const target =
-        50 +
-        (rep.community + rep.workers + rep.business) / 6 +
-        (economy === "expansion" ? 5 : economy === "recession" ? -8 : 0) -
-        Math.max(0, rep.underworld) / 4;
+      // A national leader is judged on the country; everyone else on their own reputation.
+      const target = leader
+        ? leaderApprovalTarget(ctx, playerCountry(ctx).id)
+        : 50 +
+          (rep.community + rep.workers + rep.business) / 6 +
+          (economy === "expansion" ? 5 : economy === "recession" ? -8 : 0) -
+          Math.max(0, rep.underworld) / 4;
       p.politics.approval = Math.round(
         Math.max(0, Math.min(100, p.politics.approval + (target - p.politics.approval) * 0.3)),
       );

@@ -113,11 +113,12 @@ export function createPlayerCharacter(
     housing: StartingHousing;
     cityId: CityId;
     countryId: CountryId;
+    age?: number;
   },
   rng: Rng,
 ): Character {
-  // Exactly STARTING_AGE years old on the start date, with a birthday somewhere in the past year.
-  const latestBirth = addYears(options.startTime, -STARTING_AGE);
+  // Exactly the starting age on the start date, with a birthday somewhere in the past year.
+  const latestBirth = addYears(options.startTime, -(options.age ?? STARTING_AGE));
   const birthTime = addDays(latestBirth, -rng.int(0, 364));
   const homeless = options.housing === "homeless";
   return {

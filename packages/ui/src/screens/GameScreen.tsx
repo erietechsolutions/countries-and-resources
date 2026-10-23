@@ -19,6 +19,7 @@ import { Avatar } from "../components/Avatar";
 import { CitySearch } from "../components/CitySearch";
 import { CitySummary, CountryCard, ProvinceCard } from "../components/InfoCards";
 import { StoryEventModal } from "../components/StoryEventModal";
+import { ReignEndedModal } from "../components/ReignEndedModal";
 import { SuccessionModal } from "../components/SuccessionModal";
 import { Toasts, type Toast } from "../components/Toasts";
 import { Tutorial } from "../components/Tutorial";
@@ -26,6 +27,7 @@ import { GameUiContext, useAct, type GameUi } from "../game/GameContext";
 import { SPEEDS, useRunnerVersion, type GameRunner, type Speed } from "../game/runner";
 import { MapView, type FocusRequest } from "../map/MapView";
 import { BusinessPanel } from "../panels/BusinessPanel";
+import { GovernmentPanel } from "../panels/GovernmentPanel";
 import { HomePanel } from "../panels/HomePanel";
 import { LifePanel } from "../panels/LifePanel";
 import { LawPanel } from "../panels/LawPanel";
@@ -50,6 +52,7 @@ interface Props {
 
 type Menu = null | "main" | "save" | "load" | "settings" | "confirmExit";
 type Tab =
+  | "government"
   | "life"
   | "work"
   | "business"
@@ -74,6 +77,14 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "region", label: "Region" },
 ];
 
+/** Leader mode has no personal life: the country is the whole game. */
+const LEADER_TABS: { id: Tab; label: string }[] = [
+  { id: "government", label: "Government" },
+  { id: "politics", label: "Politics" },
+  { id: "power", label: "Military" },
+  { id: "region", label: "Region" },
+];
+
 let toastId = 0;
 
 export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImportSave }: Props) {
@@ -83,7 +94,9 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
   const settings = useSettings();
 
   const [menu, setMenuState] = useState<Menu>(null);
-  const [tab, setTab] = useState<Tab>("life");
+  const leaderMode = !MODES[state.config.mode].life;
+  const tabs = leaderMode ? LEADER_TABS : TABS;
+  const [tab, setTab] = useState<Tab>(leaderMode ? "government" : "life");
   const [provinceId, setProvinceId] = useState<ProvinceId | null>(null);
   const [cityId, setCityId] = useState<CityId | null>(null);
   const [saveId, setSaveId] = useState<string | null>(initialSaveId);
@@ -127,6 +140,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
     // Story events always pause: they need a decision.
     const offStory = game.events.on("storyEvent", () => runner.setSpeed(0));
     const offDeath = game.events.on("playerDied", () => runner.setSpeed(0));
+    const offReign = game.events.on("reignEnded", () => runner.setSpeed(0));
     const offEnded = game.events.on("activityEnded", (e) => {
       // Pause once the hour's systems have settled, if the player is left with nothing to do.
       if (!pauseOnActivityEnd || e.reason === "cancelled") return;
@@ -138,6 +152,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
       offAlert();
       offStory();
       offDeath();
+      offReign();
       offEnded();
     };
   }, [game, runner, notify, pauseOnActivityEnd, pauseOnBadNews]);
@@ -267,12 +282,30 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
           </div>
           {runner.speed === 0 && <span className="paused-badge">Paused</span>}
           <div className="top-stats">
-            <span>
-              <span className="muted small">Cash</span> <strong>{formatMoney(p.cashCents)}</strong>
-            </span>
-            <span>
-              <span className="muted small">Home</span> <strong>{home}</strong>
-            </span>
+            {leaderMode ? (
+              <>
+                <span>
+                  <span className="muted small">Approval</span>{" "}
+                  <strong>{Math.round(p.politics.approval)}%</strong>
+                </span>
+                <span>
+                  <span className="muted small">Stability</span>{" "}
+                  <strong>
+                    {Math.round(state.world.countries[playerCity.countryId]?.stability ?? 0)}
+                  </strong>
+                </span>
+              </>
+            ) : (
+              <>
+                <span>
+                  <span className="muted small">Cash</span>{" "}
+                  <strong>{formatMoney(p.cashCents)}</strong>
+                </span>
+                <span>
+                  <span className="muted small">Home</span> <strong>{home}</strong>
+                </span>
+              </>
+            )}
             <button
               className="link"
               onClick={() =>
@@ -317,7 +350,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
               </div>
             </div>
             <div className="tabs" role="tablist">
-              {TABS.map((t) => (
+              {tabs.map((t) => (
                 <button
                   key={t.id}
                   role="tab"
@@ -331,6 +364,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
                 </button>
               ))}
             </div>
+            {tab === "government" && <GovernmentPanel />}
             {tab === "life" && <LifePanel />}
             {tab === "work" && <WorkPanel />}
             {tab === "people" && <PeoplePanel />}
@@ -372,7 +406,7 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
                       <CitySummary geo={geography} world={state.world} cityId={cityId} />
                     </section>
                   )}
-                  {cityId !== null && <MovePanel cityId={cityId} />}
+                  {cityId !== null && !leaderMode && <MovePanel cityId={cityId} />}
                   <ProvinceCard
                     geo={geography}
                     world={state.world}
@@ -410,9 +444,10 @@ export function GameScreen({ runner, initialSaveId, onExit, onLoadSave, onImport
               </ol>
             )}
           </section>
-          <Tutorial onTab={setTab} />
+          {!leaderMode && <Tutorial onTab={setTab} />}
           <StoryEventModal />
           <SuccessionModal onExit={onExit} />
+          <ReignEndedModal onExit={onExit} />
         </div>
 
         {menu !== null && (

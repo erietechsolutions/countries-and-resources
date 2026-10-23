@@ -6,11 +6,12 @@ import {
 import { Game } from "./core/game";
 import { Rng } from "./core/rng";
 import type { GameState } from "./core/state";
-import { MODES, validateConfig, type GameConfig } from "./modes/modes";
+import { LEADER_STARTING_AGE, MODES, validateConfig, type GameConfig } from "./modes/modes";
 import type { WorldGeography } from "./world/geography";
 import { emptyConflict } from "./conflict/types";
 import { emptyStory } from "./events/storyEvents";
 import { emptyDynasty } from "./life/aging";
+import { startReign } from "./leader/leader";
 import { generateFamily } from "./life/family";
 import { emptyPolitics } from "./politics/types";
 import { formatMoney } from "./world/format";
@@ -55,7 +56,16 @@ export function createNewGame(
   if (problems.length > 0) throw new NewGameError(problems);
 
   const rng = Rng.fromKey(config.worldSeed, "player");
-  const city = geography.cities[config.startCityId]!;
+  const leader = !MODES[config.mode].life;
+  const worldState = world ?? buildWorld(config, geography);
+  let city = geography.cities[config.startCityId]!;
+  if (leader) {
+    // Leaders govern from the capital of the country they picked.
+    const geoCountry = geography.countries.find((c) => c.id === city.countryId)!;
+    if (geoCountry.capitalCityId === null || !worldState.countries[geoCountry.id]?.population)
+      throw new NewGameError(["Choose an inhabited country with a capital to lead."]);
+    city = geography.cities[geoCountry.capitalCityId]!;
+  }
   const player = createPlayerCharacter(
     setup.character,
     {
@@ -64,16 +74,17 @@ export function createNewGame(
       housing: config.startingHousing,
       cityId: city.id,
       countryId: city.countryId,
+      age: leader ? LEADER_STARTING_AGE : undefined,
     },
     rng,
   );
 
   const state: GameState = {
-    config: { ...config },
+    config: { ...config, startCityId: city.id },
     // Days begin at 8 AM for the player; the calendar date is the configured start date.
     time: config.startTime + 8,
     rngState: Rng.fromKey(config.worldSeed, "simulation").state,
-    world: world ?? buildWorld(config, geography),
+    world: worldState,
     player,
     family: generateFamily(
       player.lastName,
@@ -90,6 +101,7 @@ export function createNewGame(
     conflict: emptyConflict(),
     dynasty: emptyDynasty(),
     succession: null,
+    reign: null,
     nextBusinessId: 1,
     log: [],
   };
@@ -98,6 +110,10 @@ export function createNewGame(
   const country = geography.countries.find((c) => c.id === city.countryId)!;
   const where = `${city.name}, ${country.name}`;
   const cash = formatMoney(player.cashCents, true);
+  if (leader) {
+    startReign(game);
+    return game;
+  }
   game.log(
     "life",
     player.housing.kind === "homeless"

@@ -22,6 +22,7 @@ export function normalizeState(state: GameState): void {
   s.conflict ??= emptyConflict();
   s.dynasty ??= emptyDynasty();
   s.succession ??= null;
+  s.reign ??= null;
   const p = s.player;
   p.relationships ??= [];
   p.reputation = { ...emptyReputation(), ...(p.reputation ?? {}) };

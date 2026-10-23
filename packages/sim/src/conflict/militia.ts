@@ -1,5 +1,5 @@
 import type { GameContext } from "../core/game";
-import { arrest, CRIME_SEVERITY } from "../crime/crime";
+import { arrest, CRIME_SEVERITY, removeFromOffice } from "../crime/crime";
 import { cityCosts } from "../economy/costs";
 import { transact } from "../finance/finance";
 import { injurePlayer, killPlayer } from "../life/aging";
@@ -508,6 +508,10 @@ function runInsurgencies(ctx: GameContext): void {
       country.headOfStateTitle = "Chairman of the Council";
       country.rulingPartyId = null;
       country.stability = 30;
+      const head = ctx.state.politics.offices.find(
+        (o) => o.kind === "headOfGovernment" && o.countryId === ins.countryId,
+      );
+      if (head?.holders.includes("player")) removeFromOffice(ctx, head.id);
     }
     if (ins.countryId === here)
       ctx.alert(result === "crushed" ? "info" : "bad", message, "politics");

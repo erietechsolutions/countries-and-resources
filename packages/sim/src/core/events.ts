@@ -24,6 +24,7 @@ export type SimEvent =
   /** A story event needs the player's decision. */
   | { type: "storyEvent"; eventId: string }
   | { type: "playerDied" }
+  | { type: "reignEnded" }
   | { type: "commandApplied"; command: Command }
   | { type: "commandRejected"; command: Command; reason: string };
 

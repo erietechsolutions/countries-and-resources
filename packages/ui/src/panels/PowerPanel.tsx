@@ -529,6 +529,8 @@ function WorldConflicts() {
 export function PowerPanel() {
   const { game } = useGameUi();
   const ruled = playerRuledCountry(game);
+  // Militias and breakaway states are life-mode paths to power.
+  const lifeMode = game.state.config.mode !== "leader";
   const home = game.geography.cities[game.state.player.cityId]!.countryId;
   const mine = new Set([home, ruled].filter((x): x is CountryId => !!x));
   const ourWars = activeWars(game).filter((w) =>
@@ -540,8 +542,8 @@ export function PowerPanel() {
         <WarCard key={w.id} war={w} leader={ruled} />
       ))}
       {ruled && <RulerCard countryId={ruled} />}
-      <MilitiaCard />
-      <IndependenceCard />
+      {lifeMode && <MilitiaCard />}
+      {lifeMode && <IndependenceCard />}
       <WorldConflicts />
     </div>
   );

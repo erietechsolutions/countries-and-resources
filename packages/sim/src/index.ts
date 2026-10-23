@@ -51,3 +51,4 @@ export * from "./conflict/militia";
 export * from "./conflict/war";
 export * from "./conflict/nation";
 export * from "./life/aging";
+export * from "./leader/leader";

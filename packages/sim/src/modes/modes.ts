@@ -1,11 +1,13 @@
 import type { GameTime } from "../core/calendar";
 import type { CityId, WorldGeography } from "../world/geography";
 
-export type GameMode = "normal" | "economic" | "hardEconomic";
+export type GameMode = "normal" | "economic" | "hardEconomic" | "leader";
 export type MapType = "real" | "random";
 export type StartingHousing = "parents" | "homeless";
 
 export const STARTING_AGE = 18;
+/** Leader mode starts with a seasoned politician already in charge. */
+export const LEADER_STARTING_AGE = 50;
 
 /** One selectable value for a new-game option. */
 export interface ChoiceOption<T> {
@@ -24,6 +26,8 @@ export interface ModeDefinition {
   description: string;
   available: boolean;
   unavailableLabel?: string;
+  /** False in Leader mode: no needs, job, home or family, only the country. */
+  life: boolean;
   /** "creationDate" = the real date the save is created; "historical" = a fixed start year. */
   startDate: "creationDate" | "historical";
   historicalStartDates?: { time: GameTime; label: string }[];
@@ -60,6 +64,19 @@ const HOUSING_HOMELESS: ChoiceOption<StartingHousing> = {
   description: "On the street with no address. Survival comes first.",
   available: true,
 };
+// Leader mode has no personal money or home to choose; these single options keep configs uniform.
+const STATE_SALARY: ChoiceOption<number> = {
+  value: 0,
+  label: "State salary",
+  description: "Your salary is paid by the state.",
+  available: true,
+};
+const OFFICIAL_RESIDENCE: ChoiceOption<StartingHousing> = {
+  value: "parents",
+  label: "Official residence",
+  description: "You live where the leader lives.",
+  available: true,
+};
 const MAP_REAL: ChoiceOption<MapType> = {
   value: "real",
   label: "Real World",
@@ -83,6 +100,7 @@ export const MODES: Record<GameMode, ModeDefinition> = {
       "of that year. History diverges from there based on your choices.",
     available: false,
     unavailableLabel: "Coming Soon",
+    life: true,
     startDate: "historical",
     historicalStartDates: [
       { time: Date.UTC(2022, 0, 1) / 3_600_000, label: "January 2022" },
@@ -102,6 +120,7 @@ export const MODES: Record<GameMode, ModeDefinition> = {
       "Starts on the day you create the save. Economies, governments and parties are generated " +
       "for this world. Start anywhere.",
     available: true,
+    life: true,
     startDate: "creationDate",
     worldData: "procedural",
     startRegion: "anywhere",
@@ -116,6 +135,7 @@ export const MODES: Record<GameMode, ModeDefinition> = {
     description:
       "Economic mode with no safety net: you start at 18 with $0, homeless, on the real-world map.",
     available: true,
+    life: true,
     startDate: "creationDate",
     worldData: "procedural",
     startRegion: "anywhere",
@@ -123,9 +143,26 @@ export const MODES: Record<GameMode, ModeDefinition> = {
     startingHousing: [HOUSING_HOMELESS],
     mapTypes: [MAP_REAL],
   },
+  leader: {
+    id: "leader",
+    name: "Leader",
+    tagline: "Run a country from day one",
+    description:
+      "Start as the head of government of any country, with none of the daily life: just the " +
+      "economy, the budget, politics, diplomacy and war. Keep the voters, the army and the " +
+      "neighbors on your side to stay in power.",
+    available: true,
+    life: false,
+    startDate: "creationDate",
+    worldData: "procedural",
+    startRegion: "anywhere",
+    startingCash: [STATE_SALARY],
+    startingHousing: [OFFICIAL_RESIDENCE],
+    mapTypes: [MAP_REAL, MAP_RANDOM],
+  },
 };
 
-export const MODE_ORDER: GameMode[] = ["normal", "economic", "hardEconomic"];
+export const MODE_ORDER: GameMode[] = ["normal", "economic", "hardEconomic", "leader"];
 
 /** Everything chosen in the new-game wizard that defines a world. Stored in every save. */
 export interface GameConfig {

@@ -85,6 +85,8 @@ export function filingBlocker(ctx: GameContext, election: Election): string | nu
   const now = ctx.state.time;
   if (now > election.filingCloses) return "Filing has closed.";
   if (p.politics.candidacy) return "You're already running for something.";
+  if (ctx.state.config.mode === "leader" && !office.holders.includes("player"))
+    return "You lead the country; you can't run for another office.";
   if (office.holders.includes("player") && office.seats === 1) return null;
   if (!p.citizenship.includes(office.countryId)) return "Only citizens can run.";
   if (!residesIn(ctx, office)) return "You must live in the area to run.";
@@ -256,7 +258,9 @@ function wonPrimary(ctx: GameContext, office: Office): boolean {
   if (office.seats > 1 || !pol.partyId || office.kind === "legislator") return true;
   const incumbent = office.holders.includes("player");
   const chance = incumbent
-    ? 0.9
+    ? ctx.state.config.mode === "leader"
+      ? 1
+      : 0.9
     : Math.max(
         0.15,
         Math.min(0.9, 0.3 + pol.rank * 0.08 + pol.standing / 500 + playerAppeal(ctx, office) * 0.4),

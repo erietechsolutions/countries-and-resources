@@ -78,6 +78,14 @@ Each milestone ends with something playable.
 
 ## Phase 6: Expansion
 
+- [x] **Leader mode**: start as head of government of any country, without daily life;
+      Government, Politics, Military and Region tabs; approval from how the country does;
+      re-elections, lost majorities, revolutions and conquest end the rule, with a record of
+      your time in office
+- [ ] **Country strategy in depth**: budget allocation, debt and bonds, big projects, trade,
+      armed forces, generals and coups, fronts, intelligence (both modes)
+- [ ] **Economy-focused life**: living standards instead of needs, weekly time budgets,
+      investing, real estate, commodities
 - [ ] **M21 – Normal mode** (US data for 2022 and 2024, 50 states)
 - [ ] **M22 – Modding support**
 - [ ] **M23 – Multiplayer foundations**
