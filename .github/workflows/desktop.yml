@@ -1,20 +1,32 @@
 # Builds the desktop app for Linux and Windows.
-# Runs on version tags (v0.2.0, ...) or manually from the Actions tab. The installers are attached
-# to the run as artifacts, and for tags to a published GitHub release that the in-app updater reads.
-# The tag must match the version in package.json.
+#
+# - Version tags (v0.2.1, ...) build and publish a GitHub release that the in-app updater reads.
+#   The tag must match the version in package.json.
+# - Pushes to main build without releasing. Their main purpose is to save the Rust and npm caches
+#   on the default branch: caches saved by a tag run can't be used by the next tag, so without
+#   these every release would compile Tauri from scratch.
+# - It can also be run by hand from the Actions tab.
 name: Desktop builds
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 
+# A newer push to main makes an older, unfinished main build pointless.
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
+  # Kept as a gate before the builds (about 40 s) so a failing test can never publish a release.
   test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -34,7 +46,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
@@ -42,7 +54,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -52,6 +64,8 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri -> target
+          # Only main saves caches; tags restore them.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - run: npm ci
 
@@ -71,13 +85,12 @@ jobs:
           releaseDraft: false
           includeUpdaterJson: true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-${{ runner.os }}
           path: |
             apps/desktop/src-tauri/target/release/bundle/**/*.deb
             apps/desktop/src-tauri/target/release/bundle/**/*.rpm
             apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/release/bundle/**/*.msi
             apps/desktop/src-tauri/target/release/bundle/**/*-setup.exe
           if-no-files-found: ignore

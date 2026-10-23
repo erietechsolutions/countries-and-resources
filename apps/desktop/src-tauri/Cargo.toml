@@ -22,8 +22,9 @@ tauri-plugin-process = "2.4"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2.14"
 
+# Thin LTO and parallel codegen keep release builds fast; the app is a thin shell around the web
+# build, so full LTO would only shave a little off the binary size.
 [profile.release]
-codegen-units = 1
-lto = true
+lto = "thin"
 opt-level = "s"
 strip = true

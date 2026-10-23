@@ -33,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm", "appimage", "nsis", "msi"],
+    "targets": ["deb", "rpm", "appimage", "nsis"],
     "category": "SimulationGame",
     "shortDescription": "Life simulation and nation-building game",
     "longDescription": "Start with nothing at 18 and build a life, a fortune, a movement and eventually a nation.",
