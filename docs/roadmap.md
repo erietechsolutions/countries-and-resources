@@ -97,6 +97,9 @@ Each milestone ends with something playable.
       city by city (volunteering, ads, rallies from 3%, town halls from 5%); fielding candidates
       needs 8% support in a city, 12% in a region and 25% nationally; candidates must campaign
       (20, 40 or 80 hours) or be dropped from the ballot
+- [x] **0.3.3**: business owners pay themselves a salary (weekly, from the business); landlords,
+      banks and lenders count steady income from a job, a business salary or tenants after 14
+      days; running a business counts as working
 - [ ] **M21 – Normal mode** (US data for 2022 and 2024, 50 states)
 - [ ] **M22 – Modding support**
 - [ ] **M23 – Multiplayer foundations**

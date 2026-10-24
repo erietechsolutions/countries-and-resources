@@ -1,4 +1,4 @@
-import type { GameTime } from "../core/calendar";
+import { toDateParts, type GameTime } from "../core/calendar";
 import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { cityCosts, countryOf } from "../economy/costs";
@@ -64,6 +64,10 @@ export interface Business {
   contract?: GovernmentContract;
   /** Listed on the stock market: easier to value, and better known. */
   listed?: boolean;
+  /** What the owner pays themselves each month (paid weekly, on Fridays). */
+  ownerSalaryCents?: number;
+  /** Start of the current unbroken salary record (set, then paid every Friday), or null. */
+  salaryPaidSince?: GameTime | null;
 }
 
 export interface GovernmentContract {
@@ -443,6 +447,53 @@ export function raiseInvestment(ctx: GameContext, id: string, sharePercent: numb
   return null;
 }
 
+/** Sets the owner's monthly salary. It's paid weekly from the company's own cash. */
+export function setOwnerSalary(ctx: GameContext, id: string, monthlyCents: number): string | null {
+  const b = getActive(ctx, id);
+  if (typeof b === "string") return b;
+  if (!Number.isInteger(monthlyCents) || monthlyCents < 0) return "Enter a salary.";
+  if (monthlyCents === (b.ownerSalaryCents ?? 0)) return null;
+  // Changing the amount restarts the record landlords look at: 14 days from now, if every
+  // Friday's pay goes through.
+  b.ownerSalaryCents = monthlyCents;
+  b.salaryPaidSince = monthlyCents > 0 ? ctx.state.time : null;
+  ctx.log(
+    "money",
+    monthlyCents > 0
+      ? `${b.name} will pay you ${formatMoney(monthlyCents, true)} a month, every Friday.`
+      : `You stopped paying yourself a salary from ${b.name}.`,
+  );
+  return null;
+}
+
+/** Friday payday for owners: the company pays the salary if it has the cash. */
+export function payOwnerSalaries(ctx: GameContext): void {
+  const p = ctx.state.player;
+  for (const b of activeBusinesses(ctx)) {
+    const monthly = b.ownerSalaryCents ?? 0;
+    if (monthly <= 0) continue;
+    const weekly = Math.round((monthly * 12) / 52);
+    if (b.cashCents < weekly) {
+      b.salaryPaidSince = null;
+      ctx.alert(
+        "bad",
+        `${b.name} couldn't afford your salary this week. Landlords and banks will notice the gap.`,
+        "money",
+      );
+      continue;
+    }
+    b.cashCents -= weekly;
+    b.salaryPaidSince ??= ctx.state.time;
+    const tax = Math.round(weekly * countryOf(ctx, p.cityId).taxes.income);
+    transact(
+      ctx,
+      weekly - tax,
+      "wages",
+      `Salary from ${b.name} (${formatMoney(tax)} tax withheld)`,
+    );
+  }
+}
+
 /** An initial public offering: a quarter of the company is sold as new shares to raise cash. */
 export function listOnStockMarket(ctx: GameContext, id: string): string | null {
   const b = getActive(ctx, id);
@@ -655,6 +706,11 @@ export function runBusinessMonth(ctx: GameContext, b: Business, commit: boolean)
 
 export const businessSystem: System = {
   id: "business",
+  onHour(ctx) {
+    // Owners are paid with everyone else: Fridays at 5 PM.
+    const d = toDateParts(ctx.state.time);
+    if (d.weekday === 5 && d.hour === 17) payOwnerSalaries(ctx);
+  },
   onMonth(ctx) {
     awardContracts(ctx);
     for (const b of activeBusinesses(ctx)) {

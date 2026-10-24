@@ -59,3 +59,4 @@ export * from "./wealth/wealth";
 export * from "./statecraft/statecraft";
 export * from "./politics/grassroots";
 export * from "./social/dating";
+export * from "./finance/income";

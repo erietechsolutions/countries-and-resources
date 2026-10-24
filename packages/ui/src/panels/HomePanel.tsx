@@ -7,6 +7,8 @@ import {
   personalityLabel,
   rentalListings,
   unitType,
+  documentedIncome,
+  VERIFIED_DAYS,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { ResidencyCard } from "./MovePanel";
@@ -97,6 +99,7 @@ export function HomePanel() {
 
       <section className="card">
         <h4 className="no-margin">Apartments for rent</h4>
+        <IncomeSeen />
         <ul className="offer-list">
           {rentalListings(game).map((l) => (
             <li key={l.unit}>
@@ -156,5 +159,22 @@ export function HomePanel() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/** What landlords count: steady pay from a job or business salary, plus rent from tenants. */
+function IncomeSeen() {
+  const { game } = useGameUi();
+  const income = documentedIncome(game);
+  return (
+    <p className="muted small">
+      Landlords see {formatMoney(income.total, true)}/month of steady income
+      {income.total > 0 &&
+        ` (job ${formatMoney(income.job, true)} · business ${formatMoney(income.business, true)} · rent ${formatMoney(income.rent, true)})`}
+      .
+      {income.pending &&
+        ` Pay from a new job or business salary counts after ${VERIFIED_DAYS} days of steady work.`}{" "}
+      They want 2.5× the rent.
+    </p>
   );
 }

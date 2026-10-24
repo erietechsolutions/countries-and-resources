@@ -5,6 +5,7 @@ import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { cityCosts } from "../economy/costs";
 import { transact } from "../finance/finance";
+import { isWorking } from "../finance/income";
 import { formatMoney } from "../world/format";
 import { createPerson, personName } from "./people";
 import type { Trait } from "./types";
@@ -141,7 +142,11 @@ export function matchChance(ctx: GameContext, profile: DatingProfile): number {
   const p = ctx.state.player;
   const n = p.needs;
   let chance =
-    0.15 + n.hygiene / 400 + n.happiness / 500 + p.reputation.fame / 400 + (p.job ? 0.05 : 0);
+    0.15 +
+    n.hygiene / 400 +
+    n.happiness / 500 +
+    p.reputation.fame / 400 +
+    (isWorking(ctx) ? 0.05 : 0);
   if (p.lifestyle === "comfortable") chance += 0.04;
   if (p.lifestyle === "luxury") chance += 0.08;
   if (p.housing.kind === "homeless") chance -= 0.1;

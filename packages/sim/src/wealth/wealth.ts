@@ -4,7 +4,8 @@ import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { CRIME_SEVERITY } from "../crime/crime";
 import { cityCosts, countryOf } from "../economy/costs";
-import { monthlyIncomeCents, totalDebtCents, transact } from "../finance/finance";
+import { totalDebtCents, transact } from "../finance/finance";
+import { documentedIncome } from "../finance/income";
 import { legislatureFor, playerOffices } from "../politics/government";
 import { createBill } from "../politics/bills";
 import { policyFor } from "../politics/policies";
@@ -258,12 +259,9 @@ function payment(principal: number, yearlyRate: number, months = 300): number {
   return Math.round((principal * r) / (1 - (1 + r) ** -months));
 }
 
-/** Rents and salary that count toward a mortgage application. */
+/** Steady pay (job or business salary) and rents that count toward a mortgage application. */
 function qualifyingIncome(ctx: GameContext): number {
-  const rents = ctx.state.wealth.properties
-    .filter((x) => x.rentedOut && !livesIn(ctx, x))
-    .reduce((s, x) => s + propertyRent(ctx, x), 0);
-  return monthlyIncomeCents(ctx.state.player) + rents;
+  return documentedIncome(ctx).total;
 }
 
 export function buyProperty(

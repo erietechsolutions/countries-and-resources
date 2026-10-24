@@ -1,7 +1,8 @@
 import type { GameContext } from "../core/game";
 import type { System } from "../core/systems";
 import { cityCosts, UNIT_TYPES, unitType } from "../economy/costs";
-import { monthlyIncomeCents, transact } from "../finance/finance";
+import { transact } from "../finance/finance";
+import { documentedIncome, VERIFIED_DAYS } from "../finance/income";
 import { formatMoney } from "../world/format";
 import { averageRelationship, MOVE_BACK_RELATIONSHIP } from "./family";
 import { hasDocuments } from "./moving";
@@ -11,8 +12,6 @@ import type { UnitType } from "./types";
 export const INCOME_TO_RENT = 2.5;
 /** Parents will co-sign a lease above this relationship. */
 export const COSIGN_RELATIONSHIP = 60;
-/** Landlords want proof of steady work before renting without a co-signer. */
-export const MIN_JOB_DAYS = 30;
 
 export interface Listing {
   unit: UnitType;
@@ -33,23 +32,22 @@ export function canCosign(ctx: GameContext): boolean {
 export function rentalListings(ctx: GameContext): Listing[] {
   const p = ctx.state.player;
   const costs = cityCosts(ctx, p.cityId);
-  const income = monthlyIncomeCents(p);
+  const documented = documentedIncome(ctx);
+  const income = documented.total;
   const cosign = canCosign(ctx);
   const evicted = (p.cooldowns.evicted ?? 0) > ctx.state.time;
   return UNIT_TYPES.map((u) => {
     const rent = costs.rentCents(u.id);
     const upfront = rent * 2;
-    const tenureOk = p.job !== null && ctx.state.time - p.job.startedAt >= MIN_JOB_DAYS * 24;
-    const incomeOk = income >= rent * INCOME_TO_RENT && tenureOk;
+    const incomeOk = income >= rent * INCOME_TO_RENT;
     let reason: string | undefined;
     if (p.housing.kind === "renting" && p.housing.unit === u.id) reason = "You already live here.";
     else if (!hasDocuments(ctx)) reason = "Landlords require legal residency papers.";
     else if (evicted) reason = "Landlords won't rent to you so soon after an eviction.";
     else if (!incomeOk && !cosign) {
-      reason =
-        income >= rent * INCOME_TO_RENT && !tenureOk
-          ? `Landlords want to see ${MIN_JOB_DAYS} days at your job (or a co-signer).`
-          : `Needs a monthly income of ${formatMoney(rent * INCOME_TO_RENT, true)} or a co-signer.`;
+      reason = documented.pending
+        ? `Landlords want to see ${VERIFIED_DAYS} days of steady pay from a job or your business (or a co-signer).`
+        : `Needs a steady monthly income of ${formatMoney(rent * INCOME_TO_RENT, true)} (job, business salary or rent) or a co-signer.`;
     } else if (p.cashCents < upfront)
       reason = `Needs ${formatMoney(upfront, true)} up front (deposit + first month).`;
     return {

@@ -113,6 +113,17 @@ country may stage a coup; unstable AI autocracies also see occasional coups.
   becomes a match with a chance based on presentation, happiness, fame, a job, lifestyle and
   Premium; a match is created as a Person the player can ask out.
 
+## Income landlords and lenders accept (0.3.3)
+
+`finance/income.ts` decides what counts as income. A job counts after 14 days. A business owner
+sets a monthly salary, paid weekly on Fridays from the company's cash and taxed like wages; it
+counts once it has been paid for 14 days without a miss (a missed payday or a change of amount
+restarts the record), and only up to what the business earns (its recent average monthly
+profit, or a third of its cash before it has a month of results). Rent from tenants counts too.
+Landlords want 2.5× the rent, mortgages 2.5× the payment, and personal loans steady income;
+payday lenders accept any paycheck, including an owner's salary. Running a business also counts
+as working for parents, happiness and dating.
+
 ## Economic-mode world generation
 
 On the real map, only geography comes from real data: borders, latitude, coastlines, and city

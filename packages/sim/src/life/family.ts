@@ -1,5 +1,6 @@
 import { randomName } from "../character/names";
 import type { GameContext } from "../core/game";
+import { isWorking } from "../finance/income";
 import type { Rng } from "../core/rng";
 import type { System } from "../core/systems";
 import type { CityId } from "../world/geography";
@@ -81,7 +82,7 @@ export const familySystem: System = {
   onDay(ctx) {
     const p = ctx.state.player;
     if (p.housing.kind !== "parents" || ctx.state.family.length === 0) return;
-    const busy = p.job !== null || p.education !== null;
+    const busy = isWorking(ctx) || p.education !== null;
     if (busy) {
       changeRelationship(ctx, 0.4);
       return;

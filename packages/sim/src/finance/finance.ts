@@ -5,6 +5,7 @@ import type { System } from "../core/systems";
 import type { Debt, DebtKind, LedgerCategory } from "../life/types";
 import { formatMoney } from "../world/format";
 import { occupationById } from "../work/occupations";
+import { documentedIncome, ownerSalaries, VERIFIED_DAYS } from "./income";
 
 const MAX_LEDGER = 120;
 const DAY = 24;
@@ -89,26 +90,27 @@ export interface LoanOffer {
 
 export function loanOffers(ctx: GameContext): LoanOffer[] {
   const p = ctx.state.player;
-  const income = monthlyIncomeCents(p);
+  // Payday lenders take any paycheck; banks want the steady, documented kind.
+  const paycheck = monthlyIncomeCents(p) + ownerSalaries(ctx);
+  const income = documentedIncome(ctx).total;
   const hasPayday = p.finance.debts.some((d) => d.kind === "payday");
   const collections = p.finance.debts.some((d) => d.kind === "collections");
   const payday: LoanOffer = {
     kind: "payday",
-    available: income > 0 && !hasPayday,
+    available: paycheck > 0 && !hasPayday,
     reason:
-      income === 0
-        ? "Requires a job."
+      paycheck === 0
+        ? "Requires a paycheck: a job or a salary from your business."
         : hasPayday
           ? "Repay your current payday loan first."
           : undefined,
-    maxCents: Math.round((income * 0.5) / 100) * 100,
+    maxCents: Math.round((paycheck * 0.5) / 100) * 100,
     rate: PAYDAY_FEE,
   };
   const score = p.finance.creditScore;
-  const tenureDays = p.job ? (ctx.state.time - p.job.startedAt) / DAY : 0;
   let reason: string | undefined;
-  if (!p.job) reason = "Requires a job.";
-  else if (tenureDays < 90) reason = "Requires 3 months at your current job.";
+  if (income === 0)
+    reason = `Requires ${VERIFIED_DAYS} days of steady pay from a job or your business.`;
   else if (score === null)
     reason = "Requires a credit history (repay a payday loan on time first).";
   else if (score < 580) reason = "Credit score too low (580 needed).";

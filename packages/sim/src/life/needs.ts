@@ -3,6 +3,7 @@ import type { GameContext } from "../core/game";
 import { unitType } from "../economy/costs";
 import { ageInYears } from "../core/calendar";
 import { socialHappiness } from "../social/social";
+import { isWorking } from "../finance/income";
 import { healthCap } from "./aging";
 import { lifestyleDef } from "./lifestyle";
 import type { NeedId, Needs } from "./types";
@@ -68,13 +69,17 @@ export function livingConditions(ctx: GameContext): LivingConditions {
 }
 
 /** The happiness level the player drifts toward, given their circumstances. */
-export function happinessTarget(p: Character, conditions: LivingConditions): number {
+export function happinessTarget(
+  p: Character,
+  conditions: LivingConditions,
+  working: boolean,
+): number {
   let target = 55 + conditions.happiness;
   if (p.housing.kind === "parents") target += 3;
   else if (p.housing.kind === "renting") target += unitType(p.housing.unit).happiness;
   else if (p.housing.kind === "owned") target += 14;
   else target -= 20;
-  if (p.job) target += 6;
+  if (working) target += 6;
   if (p.finance.debts.some((d) => d.kind === "collections")) target -= 6;
   if (p.needs.health < 40) target -= 8;
   target += socialHappiness(p);
@@ -100,7 +105,7 @@ export function applyHourlyNeeds(ctx: GameContext, effects: Partial<Needs>): voi
   n.happiness += effects.happiness ?? 0;
   // Health recovers slowly and declines a little faster.
   n.health += Math.max(-0.1, Math.min(0.06, conditions.health - n.health));
-  const target = happinessTarget(p, conditions);
+  const target = happinessTarget(p, conditions, isWorking(ctx));
   n.happiness += Math.sign(target - n.happiness) * Math.min(1.5, Math.abs(target - n.happiness));
   clampNeeds(n);
 }

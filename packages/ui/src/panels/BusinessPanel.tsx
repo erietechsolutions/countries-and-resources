@@ -22,6 +22,9 @@ import {
   type WageLevel,
   formatDate,
   supplyFactor,
+  salaryVerified,
+  sustainableSalary,
+  VERIFIED_DAYS,
 } from "@cr/sim";
 import { Meter } from "../components/Meter";
 import { useGameUi } from "../game/GameContext";
@@ -324,6 +327,7 @@ function BusinessCard({ b }: { b: Business }) {
           Take money out
         </button>
       </div>
+      <OwnerSalary b={b} />
       <div className="row">
         <span className="small">Sell a stake to investors:</span>
         {[5, 10, 20].map((pct) => (
@@ -409,6 +413,51 @@ function BusinessCard({ b }: { b: Business }) {
         </>
       )}
     </section>
+  );
+}
+
+/** The owner's salary: steady pay that landlords and banks count as income after 14 days. */
+function OwnerSalary({ b }: { b: Business }) {
+  const { game, act } = useGameUi();
+  const [salary, setSalary] = useState("");
+  const current = b.ownerSalaryCents ?? 0;
+  const steady = salaryVerified(game, b);
+  const daysLeft =
+    b.salaryPaidSince != null
+      ? Math.max(0, Math.ceil(VERIFIED_DAYS - (game.time - b.salaryPaidSince) / 24))
+      : VERIFIED_DAYS;
+  const affordable = sustainableSalary(b);
+  return (
+    <>
+      <div className="row wrap">
+        <span className="small">
+          Your salary: <strong>{formatMoney(current, true)}/month</strong>
+        </span>
+        <input
+          className="input small-input"
+          placeholder="$ per month"
+          value={salary}
+          onChange={(e) => setSalary(e.target.value)}
+          aria-label="Monthly salary"
+        />
+        <button
+          className="btn small"
+          onClick={() =>
+            act({ type: "business.salary", businessId: b.id, monthlyCents: toCents(salary) })
+          }
+        >
+          Set salary
+        </button>
+      </div>
+      <p className="muted small">
+        Paid every Friday from the business, taxed like wages.{" "}
+        {current === 0
+          ? `Pay yourself to have income landlords and banks accept: it counts after ${VERIFIED_DAYS} days of steady pay.`
+          : steady
+            ? `Counts as income: ${formatMoney(Math.min(current, affordable), true)}/month${current > affordable ? " (what the business can really afford)" : ""}.`
+            : `Counts as income in ${daysLeft} day${daysLeft === 1 ? "" : "s"}, if every payday goes through.`}
+      </p>
+    </>
   );
 }
 

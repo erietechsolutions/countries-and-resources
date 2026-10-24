@@ -2,6 +2,7 @@ import {
   closeBusiness,
   foundBusiness,
   listOnStockMarket,
+  setOwnerSalary,
   investInBusiness,
   openLocation,
   raiseInvestment,
@@ -158,6 +159,7 @@ export type Command =
   | { type: "media.line"; outletId: string; partyId: string | null }
   | { type: "media.sell"; outletId: string }
   | { type: "business.ipo"; businessId: string }
+  | { type: "business.salary"; businessId: string; monthlyCents: number }
   | { type: "activity.cancel" }
   | { type: "job.accept"; offerId: string }
   | { type: "job.decline"; offerId: string }
@@ -273,6 +275,8 @@ export const commandHandlers: CommandHandlers = {
   "media.line": (ctx, cmd) => alive(ctx) ?? setMediaLine(ctx, cmd.outletId, cmd.partyId),
   "media.sell": (ctx, cmd) => alive(ctx) ?? sellMedia(ctx, cmd.outletId),
   "business.ipo": (ctx, cmd) => alive(ctx) ?? listOnStockMarket(ctx, cmd.businessId),
+  "business.salary": (ctx, cmd) =>
+    alive(ctx) ?? setOwnerSalary(ctx, cmd.businessId, cmd.monthlyCents),
   "activity.cancel": (ctx) => cancelActivity(ctx),
   "job.accept": (ctx, cmd) => alive(ctx) ?? acceptOffer(ctx, cmd.offerId),
   "job.decline": (ctx, cmd) => {
